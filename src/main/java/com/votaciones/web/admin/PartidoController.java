@@ -21,14 +21,14 @@ public class PartidoController {
     // LISTA
     @GetMapping
     public String listar(Model model) {
-        model.addAttribute("partidos", service.listar()); // ya lo tenías
+        model.addAttribute("partidos", service.listar());
         return "admin/partidos-list";
     }
 
     // DETALLE
     @GetMapping("/{id}")
     public String detalle(@PathVariable Long id, Model model, RedirectAttributes ra) {
-        Partido partido = service.obtener(id); // ajusta si tu service usa findById/obtenerPorId
+        Partido partido = service.obtener(id);
         if (partido == null) {
             ra.addFlashAttribute("error", "El partido con id " + id + " no existe.");
             return "redirect:/admin/partidos";
@@ -55,7 +55,7 @@ public class PartidoController {
             model.addAttribute("titulo", "Crear partido");
             return "admin/partidos-form";
         }
-        service.guardar(partido); // ajusta si tu service se llama crear()
+        service.guardar(partido);
         ra.addFlashAttribute("ok", "Partido creado correctamente.");
         return "redirect:/admin/partidos";
     }
@@ -63,7 +63,7 @@ public class PartidoController {
     // FORM EDITAR
     @GetMapping("/{id}/editar")
     public String editar(@PathVariable Long id, Model model, RedirectAttributes ra) {
-        Partido partido = service.obtener(id); // ajusta si usas Optional
+        Partido partido = service.obtener(id);
         if (partido == null) {
             ra.addFlashAttribute("error", "El partido con id " + id + " no existe.");
             return "redirect:/admin/partidos";
@@ -95,7 +95,7 @@ public class PartidoController {
     @PostMapping("/{id}/eliminar")
     public String eliminar(@PathVariable Long id, RedirectAttributes ra) {
         try {
-            service.eliminar(id); // ajusta si tu método se llama deleteById
+            service.eliminar(id);
             ra.addFlashAttribute("ok", "Partido eliminado correctamente.");
         } catch (Exception e) {
             ra.addFlashAttribute("error", "No se pudo eliminar: " + e.getMessage());

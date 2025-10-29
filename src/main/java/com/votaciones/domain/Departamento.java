@@ -4,13 +4,15 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(schema = "votaciones", name = "departamentos")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Table(name="departamentos", schema="votaciones")
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor
+@Builder
 public class Departamento {
     @Id
-    @Column(name = "codigo_dane")
+    @Column(name="codigo_dane")
     private Integer codigoDane;
 
-    @Column(name = "nombre", nullable = false, length = 20)
+    @Column(name="nombre", length=20, nullable=false)
     private String nombre;
 }

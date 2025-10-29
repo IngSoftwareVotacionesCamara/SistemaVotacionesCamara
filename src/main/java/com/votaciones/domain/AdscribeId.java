@@ -1,20 +1,16 @@
 package com.votaciones.domain;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import lombok.*;
 
+import java.io.Serializable;
+
 @Embeddable
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor
 @EqualsAndHashCode
-public class AdscribeId {
-    @Column(name = "codigo_dane")
+public class AdscribeId implements Serializable {
     private Integer codigoDane;
-    @Column(name = "cod_cir")
     private Integer codCir;
-    @Column(name = "cod_partido")
     private Integer codPartido;
 }

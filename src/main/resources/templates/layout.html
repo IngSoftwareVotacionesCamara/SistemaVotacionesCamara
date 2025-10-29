@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <title th:text="${title} ?: 'Sistema de Votaciones'">Sistema de Votaciones</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link th:href="@{/css/app.css}" rel="stylesheet" />
-    <script th:src="@{/js/app.js}" defer></script>
+    <link rel="stylesheet" th:href="@{/css/app.css(v=${T(java.lang.System).currentTimeMillis()})}">
+    <script defer th:src="@{/js/app.js(v=${T(java.lang.System).currentTimeMillis()})}"></script>
 </head>
 <body>
 <header class="app-header">

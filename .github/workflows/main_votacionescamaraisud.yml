@@ -5,11 +5,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-# ⚙️ Ajusta estos valores a tu proyecto si lo necesitas
 env:
-  APP_NAME: VotacionescamaraISUD           # Nombre del App Service en Azure
+  APP_NAME: VotacionescamaraISUD          # Nombre del App Service en Azure
   JAVA_VERSION: '17'
-  PROJECT_DIR: '.'                          # Cambia si tu build.gradle está en subcarpeta (ej: backend)
+  PROJECT_DIR: '.'
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -32,7 +31,6 @@ jobs:
           distribution: temurin
           cache: gradle
 
-      # Si existe gradlew, lo usamos (wrapper recomendado)
       - name: Make gradlew executable (if exists)
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
@@ -40,27 +38,44 @@ jobs:
             chmod +x ./gradlew
           fi
 
+      # 🔍 Guardas: evita que se cuele el método verCandidatos o mapeos duplicados
+      - name: Guard rails - no duplicar mapping /admin/candidatos
+        run: |
+          set -e
+          echo "Verificando duplicados de mappings..."
+          if grep -R "verCandidatos" -n src/main/java ; then
+            echo "❌ Queda código viejo verCandidatos"; exit 1
+          fi
+          MULTI=$(grep -R "@GetMapping(\"/admin/candidatos\")" -n src/main/java | wc -l)
+          if [ "$MULTI" -gt 1 ]; then
+            echo "❌ Hay más de un @GetMapping(\"/admin/candidatos\")"; exit 1
+          fi
+          echo "✅ Verificación de duplicados correcta."
+
+      # 🧹 Compila en limpio (sin caché)
       - name: Build with Gradle wrapper (if present)
         id: build-with-wrapper
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
           if [ -f "./gradlew" ]; then
-            ./gradlew clean bootJar -x test
+            ./gradlew --no-build-cache clean bootJar -x test
           else
             echo "no-wrapper" >> $GITHUB_OUTPUT
           fi
 
-      # Fallback: si no hay wrapper, instala Gradle y compila
+      # 🧩 Fallback si no hay wrapper
       - name: Setup Gradle & build (fallback when no wrapper)
         if: steps.build-with-wrapper.outputs.no-wrapper == 'no-wrapper'
         uses: gradle/gradle-build-action@v3
         with:
           gradle-version: 8.9
+
       - name: Build with installed Gradle (fallback)
         if: steps.build-with-wrapper.outputs.no-wrapper == 'no-wrapper'
         working-directory: ${{ env.PROJECT_DIR }}
-        run: gradle clean bootJar -x test
+        run: gradle --no-build-cache clean bootJar -x test
 
+      # 📦 Copia el artefacto generado
       - name: Locate JAR and copy as app.jar
         working-directory: ${{ env.PROJECT_DIR }}
         run: |

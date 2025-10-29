@@ -13,7 +13,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/admin/candidatos")
-@RequiredArgsConstructor
 public class CandidatoController {
 
     private final CandidatoService service;
@@ -72,10 +71,7 @@ public class CandidatoController {
             model.addAttribute("titulo", "Editar candidato");
             return "admin/candidatos-form";
         }
-        // Asegurar que el id del path prevalezca (ajusta el setter según tu entidad)
-        // Si tu PK se llama codCandidato (recomendado), usa:
         candidato.setIdElector(id);
-
         service.guardar(candidato);
         ra.addFlashAttribute("ok", "Candidato actualizado correctamente.");
         return "redirect:/admin/candidatos";

@@ -10,6 +10,7 @@ public class AdminController {
 
     @GetMapping
     public String adminHome() {
+        // Redirige al listado principal
         return "redirect:/admin/partidos";
     }
 
@@ -17,5 +18,4 @@ public class AdminController {
     public String dashboard() {
         return "admin/dashboard";
     }
-
 }

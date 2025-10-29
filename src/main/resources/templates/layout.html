@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title th:text="${title} ?: 'Sistema de Votaciones'">Sistema de Votaciones</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link th:href="@{/css/app.css}" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link th:href="@{/css/app.css}" rel="stylesheet" />
     <script th:src="@{/js/app.js}" defer></script>
 </head>
 <body>
@@ -22,13 +22,14 @@
     </nav>
 </header>
 
-<!-- Define el fragmento content(body) -->
-<main class="container" th:fragment="content(body)">
+<main class="container">
     <div th:if="${ok}" class="alert success" th:text="${ok}"></div>
     <div th:if="${error}" class="alert error" th:text="${error}"></div>
 
-    <!-- Inserta el contenido de la vista hija -->
-    <section th:insert="${body}">Contenido</section>
+    <!-- Fragmento de layout: recibirá el "content" de las vistas hijas -->
+    <section th:fragment="content(content)">
+        <th:block th:replace="${content}">Contenido</th:block>
+    </section>
 </main>
 
 <footer class="app-footer">

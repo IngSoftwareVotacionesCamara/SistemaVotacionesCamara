@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      th:replace="layout :: content (~{::body})">
+<body>
+<div class="page-head">
+    <h1>Candidatos</h1>
+    <div class="actions">
+        <a class="btn" th:href="@{/admin/candidatos/nuevo}">Nuevo</a>
+        <a class="btn" th:href="@{/admin/candidatos/upload}">Cargar CSV</a>
+    </div>
+</div>
+
+<form class="filters" method="get" th:action="@{/admin/candidatos}">
+    <input type="text" name="q" th:value="${param.q}" placeholder="Buscar por partido o circunscripción">
+    <button class="btn">Buscar</button>
+</form>
+
+<table class="table">
+    <thead>
+    <tr>
+        <th>ID Elector</th>
+        <th>Número Lista</th>
+        <th>Partido</th>
+        <th>DANE</th>
+        <th>Circunscripción</th>
+        <th></th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="c : ${data}">
+        <td th:text="${c.idElector}">1</td>
+        <td th:text="${c.numLista}">101</td>
+        <td th:text="${c.codPartido}">P01</td>
+        <td th:text="${c.codigoDane}">11</td>
+        <td th:text="${c.codCir}">C001</td>
+        <td class="table-actions">
+            <a th:href="@{'/admin/candidatos/editar/' + ${c.idElector}}">Editar</a>
+            <form th:action="@{'/admin/candidatos/eliminar/' + ${c.idElector}}" method="post" style="display:inline">
+                <button class="link danger" onclick="return confirm('¿Eliminar?')">Eliminar</button>
+            </form>
+        </td>
+    </tr>
+    <tr th:if="${#lists.isEmpty(data)}">
+        <td colspan="6" class="empty">Sin resultados</td>
+    </tr>
+    </tbody>
+</table>
+
+<div class="pagination" th:if="${data != null}">
+    <a th:if="${!data.first}" th:href="@{|?page=${data.number-1}|}">« Anterior</a>
+    <span>Página <span th:text="${data.number+1}">1</span> de <span th:text="${data.totalPages}">1</span></span>
+    <a th:if="${!data.last}" th:href="@{|?page=${data.number+1}|}">Siguiente »</a>
+</div>
+</body>
+</html>

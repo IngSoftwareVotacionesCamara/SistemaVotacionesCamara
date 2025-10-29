@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      th:replace="layout :: content (~{::body})">
+<body>
+<h1>Registrar Voto</h1>
+
+<form class="form" th:action="@{/votar}" method="post">
+    <div class="grid-2">
+        <label>
+            Partido (código)
+            <input type="text" name="codPartido" th:value="${voto?.codPartido}" required>
+        </label>
+        <label>
+            Código DANE (depto)
+            <input type="text" name="codigoDane" th:value="${voto?.codigoDane}" required>
+        </label>
+        <label>
+            Circunscripción
+            <input type="text" name="codCir" th:value="${voto?.codCir}" required>
+        </label>
+    </div>
+
+    <!-- Si tu diseño previo incluía verificación/confirmación, añade aquí -->
+    <div class="form-actions">
+        <button class="btn-primary">Votar</button>
+        <a class="btn" th:href="@{/}">Cancelar</a>
+    </div>
+</form>
+
+<!-- Resultados de consulta (ej., conteo por partido/circunscripción) -->
+<section class="panel" th:if="${resumen != null}">
+    <h2>Resumen parcial</h2>
+    <table class="table">
+        <thead><tr><th>Partido</th><th>Circunscripción</th><th>Votos</th></tr></thead>
+        <tbody>
+        <tr th:each="r : ${resumen}">
+            <td th:text="${r.codPartido}">P01</td>
+            <td th:text="${r.codCir}">C001</td>
+            <td th:text="${r.total}">0</td>
+        </tr>
+        </tbody>
+    </table>
+</section>
+</body>
+</html>

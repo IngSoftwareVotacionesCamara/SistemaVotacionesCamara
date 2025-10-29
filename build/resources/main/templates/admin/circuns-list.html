@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      th:replace="layout :: content (~{::body})">
+<body>
+<div class="page-head">
+    <h1>Circunscripciones</h1>
+    <div class="actions">
+        <a class="btn" th:href="@{/admin/circunscripciones/nueva}">Nueva</a>
+        <a class="btn" th:href="@{/admin/circunscripciones/upload}">Cargar CSV</a>
+    </div>
+</div>
+
+<table class="table">
+    <thead>
+    <tr>
+        <th>Código</th>
+        <th>Nombre</th>
+        <th>Tipo</th>
+        <th>Curules</th>
+        <th></th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="c : ${data}">
+        <td th:text="${c.codCir}">C001</td>
+        <td th:text="${c.nombreC}">Circ. Bogotá</td>
+        <td th:text="${c.tipo}">TERRITORIAL</td>
+        <td th:text="${c.curules}">2</td>
+        <td class="table-actions">
+            <a th:href="@{'/admin/circunscripciones/editar/' + ${c.codCir}}">Editar</a>
+            <form th:action="@{'/admin/circunscripciones/eliminar/' + ${c.codCir}}" method="post" style="display:inline">
+                <button class="link danger" onclick="return confirm('¿Eliminar?')">Eliminar</button>
+            </form>
+        </td>
+    </tr>
+    <tr th:if="${#lists.isEmpty(data)}">
+        <td colspan="5" class="empty">Sin resultados</td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>

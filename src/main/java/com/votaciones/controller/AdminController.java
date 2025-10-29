@@ -7,6 +7,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 @org.springframework.context.annotation.Profile("!view")
 public class AdminController {
 
+        @GetMapping
+        public String home() {
+            return "redirect:/admin/partidos";
+        }
         @GetMapping("/admin/partidos")
         public String verPartidos() {
             return "admin/partidos-list";

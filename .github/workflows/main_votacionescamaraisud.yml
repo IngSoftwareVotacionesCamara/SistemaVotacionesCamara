@@ -1,51 +1,57 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
+# Build and deploy JAR app to Azure Web App - VotacionescamaraISUD (GRADLE)
 
 name: Build and deploy JAR app to Azure Web App - VotacionescamaraISUD
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read #This is required for actions/checkout
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Java version
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           java-version: '17'
-          distribution: 'microsoft'
+          distribution: 'temurin'   # puedes dejar 'microsoft' si prefieres
 
-      - name: Build with Gradle
-        run: ./gradlew clean build -x test
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      # Si tu build.gradle NO está en la raíz, descomenta y ajusta:
+      # - name: Move to subdir
+      #   run: echo "W_DIR=backend" >> $GITHUB_ENV
+
+      - name: Build with Gradle (bootJar)
+        # working-directory: ${{ env.W_DIR }}
+        run: ./gradlew clean bootJar -x test
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: java-app
-          path: '${{ github.workspace }}/target/*.jar'
+          path: build/libs/*.jar   # Gradle deja los jars aquí
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
-  
+      id-token: write
+      contents: read
+
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: java-app
-      
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -54,11 +60,8 @@ jobs:
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_ABF32F4966A24E41ADF9D3BB8DB52259 }}
 
       - name: Deploy to Azure Web App
-        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'VotacionescamaraISUD'
           slot-name: 'Production'
-          package: '*.jar'
-
-          
+          package: '*.jar'   

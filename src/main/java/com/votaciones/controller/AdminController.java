@@ -13,11 +13,6 @@ public class AdminController {
         return "admin/dashboard";
     }
 
-    @GetMapping("/partidos")
-    public String verPartidos() {
-        return "redirect:/admin/partidos-list";
-    }
-
     @GetMapping("/candidatos")
     public String verCandidatos() {
         return "admin/candidatos-list";

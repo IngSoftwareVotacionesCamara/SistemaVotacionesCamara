@@ -4,26 +4,28 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(schema = "votaciones", name = "adscribe")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Table(name="adscribe", schema="votaciones")
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor
+@Builder
 public class Adscribe {
 
     @EmbeddedId
     private AdscribeId id;
 
-    // Relación con representacion (codigo_dane, cod_cir)
+    @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("codigoDane")
-    @ManyToOne @JoinColumn(name = "codigo_dane", insertable = false, updatable = false)
-    private Departamento departamento;
+    @JoinColumns({
+            @JoinColumn(name="codigo_dane", referencedColumnName="codigo_dane", insertable=false, updatable=false),
+            @JoinColumn(name="cod_cir", referencedColumnName="cod_cir", insertable=false, updatable=false)
+    })
+    @JoinColumn(name="codigo_dane", insertable=false, updatable=false)
+    private Departamento _dep; // (opcional, no usado)
 
-    @MapsId("codCir")
-    @ManyToOne @JoinColumn(name = "cod_cir", insertable = false, updatable = false)
-    private Circunscripcion circunscripcion;
-
-    @MapsId("codPartido")
-    @ManyToOne @JoinColumn(name = "cod_partido", insertable = false, updatable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="cod_partido", insertable=false, updatable=false)
     private Partido partido;
 
-    @Column(name = "tipo_lista", nullable = false, length = 10)
+    @Column(name="tipo_lista", length=10, nullable=false)
     private String tipoLista;
 }

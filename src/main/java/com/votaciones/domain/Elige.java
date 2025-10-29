@@ -5,14 +5,16 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(schema = "votaciones", name = "elige")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Table(name="elige", schema="votaciones")
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor
+@Builder
 public class Elige {
     @Id
-    @Column(name = "cod_elige")
+    @Column(name="cod_elige")
     private Integer codElige;
 
-    @ManyToOne
-    @JoinColumn(name = "id_elector")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="id_elector")
     private Candidato candidato;
 }

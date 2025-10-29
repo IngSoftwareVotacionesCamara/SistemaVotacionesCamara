@@ -4,20 +4,22 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(schema = "votaciones", name = "representacion")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Table(name="representacion", schema="votaciones")
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor
+@Builder
 public class Representacion {
 
     @EmbeddedId
     private RepresentacionId id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("codigoDane")
-    @ManyToOne
-    @JoinColumn(name = "codigo_dane")
+    @JoinColumn(name="codigo_dane")
     private Departamento departamento;
 
+    @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("codCir")
-    @ManyToOne
-    @JoinColumn(name = "cod_cir")
+    @JoinColumn(name="cod_cir")
     private Circunscripcion circunscripcion;
 }

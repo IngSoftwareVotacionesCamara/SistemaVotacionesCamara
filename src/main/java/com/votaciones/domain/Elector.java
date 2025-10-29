@@ -4,23 +4,25 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(schema = "votaciones", name = "electores")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Table(name="electores", schema="votaciones")
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor
+@Builder
 public class Elector {
     @Id
-    @Column(name = "id_elector")
+    @Column(name="id_elector")
     private Long idElector;
 
-    @Column(nullable = false, length = 70)
+    @Column(name="nombres", length=70, nullable=false)
     private String nombres;
 
-    @Column(nullable = false, length = 20)
+    @Column(name="password", length=20, nullable=false)
     private String password;
 
-    @Column(nullable = false, length = 15)
-    private String estado; // 'Habilitado' por defecto
+    @Column(name="estado", length=15, nullable=false)
+    private String estado;
 
-    @ManyToOne
-    @JoinColumn(name = "codigo_dane")
-    private Departamento departamento;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="codigo_dane")
+    private Departamento departamento;   // nullable
 }

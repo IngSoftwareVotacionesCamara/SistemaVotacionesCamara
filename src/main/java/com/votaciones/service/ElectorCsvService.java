@@ -1,7 +1,7 @@
 package com.votaciones.service;
 
 import com.opencsv.CSVReader;
-import com.votaciones.entity.Elector;
+import com.votaciones.domain.Elector;
 import com.votaciones.repo.ElectorRepo;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;

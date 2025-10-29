@@ -1,11 +1,19 @@
-# Build and deploy JAR app to Azure Web App - VotacionescamaraISUD (GRADLE)
-
-name: Build and deploy JAR app to Azure Web App - VotacionescamaraISUD
+name: Build & Deploy (Gradle → Azure Web App)
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
+
+# ⚙️ Ajusta estos valores a tu proyecto si lo necesitas
+env:
+  APP_NAME: VotacionescamaraISUD           # Nombre del App Service en Azure
+  JAVA_VERSION: '17'
+  PROJECT_DIR: '.'                          # Cambia si tu build.gradle está en subcarpeta (ej: backend)
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -14,30 +22,60 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'   # puedes dejar 'microsoft' si prefieres
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: gradle
 
-      - name: Make gradlew executable
-        run: chmod +x gradlew
+      # Si existe gradlew, lo usamos (wrapper recomendado)
+      - name: Make gradlew executable (if exists)
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          if [ -f "./gradlew" ]; then
+            chmod +x ./gradlew
+          fi
 
-      # Si tu build.gradle NO está en la raíz, descomenta y ajusta:
-      # - name: Move to subdir
-      #   run: echo "W_DIR=backend" >> $GITHUB_ENV
+      - name: Build with Gradle wrapper (if present)
+        id: build-with-wrapper
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          if [ -f "./gradlew" ]; then
+            ./gradlew clean bootJar -x test
+          else
+            echo "no-wrapper" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Build with Gradle (bootJar)
-        # working-directory: ${{ env.W_DIR }}
-        run: ./gradlew clean bootJar -x test
+      # Fallback: si no hay wrapper, instala Gradle y compila
+      - name: Setup Gradle & build (fallback when no wrapper)
+        if: steps.build-with-wrapper.outputs.no-wrapper == 'no-wrapper'
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: 8.9
+      - name: Build with installed Gradle (fallback)
+        if: steps.build-with-wrapper.outputs.no-wrapper == 'no-wrapper'
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: gradle clean bootJar -x test
 
-      - name: Upload artifact for deployment job
+      - name: Locate JAR and copy as app.jar
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          JAR_PATH=$(ls build/libs/*-SNAPSHOT.jar build/libs/*.jar 2>/dev/null | head -n1)
+          if [ -z "$JAR_PATH" ]; then
+            echo "❌ No se encontró ningún JAR en build/libs"; exit 1
+          fi
+          echo "✅ JAR encontrado: $JAR_PATH"
+          cp "$JAR_PATH" "$GITHUB_WORKSPACE/app.jar"
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: java-app
-          path: build/libs/*.jar   # Gradle deja los jars aquí
+          name: app
+          path: app.jar
 
   deploy:
     runs-on: ubuntu-latest
@@ -47,12 +85,13 @@ jobs:
       contents: read
 
     steps:
-      - name: Download artifact from build job
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: java-app
+          name: app
+          path: .
 
-      - name: Login to Azure
+      - name: Login to Azure (OIDC)
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_E17D8B73FECF419EB0EB3AEB4BC68498 }}
@@ -62,6 +101,6 @@ jobs:
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'VotacionescamaraISUD'
+          app-name: ${{ env.APP_NAME }}
           slot-name: 'Production'
-          package: '*.jar'   
+          package: app.jar

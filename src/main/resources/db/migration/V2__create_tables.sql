@@ -1,6 +1,3 @@
--- Esquema
-CREATE SCHEMA IF NOT EXISTS votaciones;
-
 -- Tablas
 CREATE TABLE IF NOT EXISTS votaciones.departamentos
 (

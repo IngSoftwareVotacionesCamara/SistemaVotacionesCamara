@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      th:replace="layout :: content (~{::body})">
+<body>
+<h1>Cargar partidos (CSV)</h1>
+<p>Cabecera: <code>cod_partido;nombreP</code></p>
+
+<form class="form" th:action="@{/admin/partidos/upload-csv}" method="post" enctype="multipart/form-data">
+    <label>
+        Archivo CSV
+        <input type="file" name="file" accept=".csv" required>
+    </label>
+    <div class="form-actions">
+        <button class="btn-primary">Subir</button>
+        <a class="btn" th:href="@{/admin/partidos}">Volver</a>
+    </div>
+</form>
+</body>
+</html>

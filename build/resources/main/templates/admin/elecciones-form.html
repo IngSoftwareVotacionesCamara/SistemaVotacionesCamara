@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      th:replace="layout :: content (~{::body})">
+<body>
+<h1>Programar jornada electoral</h1>
+
+<form class="form" th:action="@{/admin/elecciones}" method="post">
+    <div class="grid-2">
+        <label>
+            Código Elección
+            <input type="text" name="codElige" th:value="${eleccion?.codElige}" required>
+        </label>
+        <label>
+            ID Responsable (elector)
+            <input type="number" name="idElector" th:value="${eleccion?.idElector}" required>
+        </label>
+        <!-- Campos opcionales si los agregas en entidad:
+        <label>Fecha Inicio <input type="datetime-local" name="fechaInicio"></label>
+        <label>Fecha Fin <input type="datetime-local" name="fechaFin"></label>
+        <label>Descripción <input type="text" name="descripcion"></label> -->
+    </div>
+
+    <div class="form-actions">
+        <button class="btn-primary">Guardar</button>
+        <a class="btn" th:href="@{/admin/candidatos}">Volver</a>
+    </div>
+</form>
+</body>
+</html>

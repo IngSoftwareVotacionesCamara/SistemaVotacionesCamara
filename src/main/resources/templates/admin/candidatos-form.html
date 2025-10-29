@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      th:replace="layout :: content (~{::body})">
+<body>
+<h1 th:text="${candidato?.idElector} != null ? 'Editar candidato' : 'Nuevo candidato'">Nuevo candidato</h1>
+
+<form class="form" th:action="${candidato?.idElector} != null ? @{'/admin/candidatos/editar/' + ${candidato.idElector}} : @{/admin/candidatos}"
+      method="post">
+    <div class="grid-2">
+        <label>
+            ID Elector
+            <input type="number" name="idElector" th:value="${candidato?.idElector}" th:readonly="${candidato?.idElector} != null" required>
+        </label>
+        <label>
+            Número de Lista
+            <input type="number" name="numLista" th:value="${candidato?.numLista}" required>
+        </label>
+        <label>
+            Código Partido
+            <input type="text" name="codPartido" th:value="${candidato?.codPartido}" required>
+        </label>
+        <label>
+            Código DANE
+            <input type="text" name="codigoDane" th:value="${candidato?.codigoDane}" required>
+        </label>
+        <label>
+            Circunscripción
+            <input type="text" name="codCir" th:value="${candidato?.codCir}" required>
+        </label>
+    </div>
+    <div class="form-actions">
+        <button class="btn-primary">Guardar</button>
+        <a class="btn" th:href="@{/admin/candidatos}">Cancelar</a>
+    </div>
+</form>
+</body>
+</html>

@@ -15,22 +15,22 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequiredArgsConstructor
 public class ElectorController {
 
-    private final ElectorService service;
+    private final ElectorCsvService electorCsvService;
 
-    @GetMapping
-    public String listar(org.springframework.ui.Model model) {
-        model.addAttribute("electores", service.listar());
-        return "admin/electores-list";
+    @GetMapping("/upload-csv")
+    public String uploadForm(Model model) {
+        model.addAttribute("title", "Cargar electores CSV");
+        return "admin/electores-upload";
     }
 
     @PostMapping("/upload-csv")
-    public String uploadCsv(@RequestParam("file") MultipartFile file, RedirectAttributes ra) {
+    public String uploadCsv(MultipartFile file, Model model) {
         try {
-            int n = service.importarCsv(file);
-            ra.addFlashAttribute("ok", "Se importaron " + n + " electores correctamente.");
+            int insertados = electorCsvService.importar(file);
+            model.addAttribute("ok", "Archivo procesado. Registros insertados: " + insertados);
         } catch (Exception e) {
-            ra.addFlashAttribute("error", "Error al importar: " + e.getMessage());
+            model.addAttribute("error", "No se pudo procesar el CSV: " + e.getMessage());
         }
-        return "redirect:/admin/electores";
+        return "admin/electores-upload";
     }
 }

@@ -11,7 +11,7 @@ public class AdminController {
     @GetMapping
     public String adminHome() {
         // Redirige al listado principal
-        return "redirect:/admin/partidos";
+        return "redirect:/admin/candidatos";
     }
 
     @GetMapping("/dashboard")

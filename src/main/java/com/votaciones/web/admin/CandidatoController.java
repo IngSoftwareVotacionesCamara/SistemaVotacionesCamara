@@ -3,7 +3,7 @@ package com.votaciones.web.admin;
 import com.votaciones.domain.Candidato;
 import com.votaciones.service.CandidatoService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import lombok.RequiredArgsConstructor;   // 👈 importante
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -13,18 +13,17 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/admin/candidatos")
+@RequiredArgsConstructor
 public class CandidatoController {
 
     private final CandidatoService service;
 
-    // LISTAR
     @GetMapping
     public String listar(Model model) {
         model.addAttribute("candidatos", service.listar());
         return "admin/candidatos-list";
     }
 
-    // FORM NUEVO
     @GetMapping("/nuevo")
     public String nuevo(Model model) {
         model.addAttribute("titulo", "Nuevo candidato");
@@ -32,7 +31,6 @@ public class CandidatoController {
         return "admin/candidatos-form";
     }
 
-    // CREAR
     @PostMapping
     public String crear(@Valid @ModelAttribute("candidato") Candidato candidato,
                         BindingResult br,
@@ -47,7 +45,6 @@ public class CandidatoController {
         return "redirect:/admin/candidatos";
     }
 
-    // FORM EDITAR
     @GetMapping("/{id}/editar")
     public String editar(@PathVariable Long id, Model model, RedirectAttributes ra) {
         var cand = service.obtener(id);
@@ -60,7 +57,6 @@ public class CandidatoController {
         return "admin/candidatos-form";
     }
 
-    // ACTUALIZAR
     @PostMapping("/{id}")
     public String actualizar(@PathVariable Long id,
                              @Valid @ModelAttribute("candidato") Candidato candidato,
@@ -71,13 +67,18 @@ public class CandidatoController {
             model.addAttribute("titulo", "Editar candidato");
             return "admin/candidatos-form";
         }
+
+        // ⚠️ Ajusta este setter al nombre real de tu PK.
+        // Si tu entidad tiene setId(Long id), úsalo. Si no, cambia a tu campo real.
+        // Ejemplo recomendado:
+        // candidato.setId(id);
         candidato.setIdElector(id);
+
         service.guardar(candidato);
         ra.addFlashAttribute("ok", "Candidato actualizado correctamente.");
         return "redirect:/admin/candidatos";
     }
 
-    // ELIMINAR
     @PostMapping("/{id}/eliminar")
     public String eliminar(@PathVariable Long id, RedirectAttributes ra) {
         service.eliminar(id);
@@ -85,7 +86,6 @@ public class CandidatoController {
         return "redirect:/admin/candidatos";
     }
 
-    // IMPORTAR CSV
     @PostMapping("/upload-csv")
     public String uploadCsv(@RequestParam("file") MultipartFile file, RedirectAttributes ra) {
         try {

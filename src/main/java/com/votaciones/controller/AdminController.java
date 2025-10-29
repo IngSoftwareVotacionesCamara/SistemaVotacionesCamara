@@ -2,43 +2,39 @@ package com.votaciones.controller;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 @Controller
-@org.springframework.context.annotation.Profile("!view")
+@RequestMapping("/admin")
 public class AdminController {
 
-        @GetMapping
-        public String home() {
-            return "redirect:/admin/partidos";
-        }
-        @GetMapping("/admin/partidos")
-        public String verPartidos() {
-            return "admin/partidos-list";
-        }
+    @GetMapping
+    public String dashboard() {
+        return "admin/dashboard";
+    }
 
-        @GetMapping("/admin/candidatos")
-        public String verCandidatos() {
-            return "admin/candidatos-list";
-        }
+    @GetMapping("/partidos")
+    public String verPartidos() {
+        return "admin/partidos-list";
+    }
 
-        @GetMapping("/admin/circunscripciones")
-        public String verCircunscripciones() {
-            return "admin/circuns-list";
-        }
+    @GetMapping("/candidatos")
+    public String verCandidatos() {
+        return "admin/candidatos-list";
+    }
 
-        @GetMapping("/admin/elecciones/nueva")
-        public String programarEleccion() {
-            return "admin/elecciones-form";
-        }
+    @GetMapping("/circunscripciones")
+    public String verCircunscripciones() {
+        return "admin/circuns-list";
+    }
 
-        @GetMapping("/admin/electores/upload-csv")
-        public String subirElectoresCsv() {
-            return "admin/electores-upload";
-        }
+    @GetMapping("/elecciones/nueva")
+    public String programarEleccion() {
+        return "admin/elecciones-form";
+    }
 
-        @GetMapping("/votar")
-        public String votar() {
-            return "voto/votar-form";
-        }
-
+    @GetMapping("/electores/upload-csv")
+    public String subirElectoresCsv() {
+        return "admin/electores-upload";
+    }
 }

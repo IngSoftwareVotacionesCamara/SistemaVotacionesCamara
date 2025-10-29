@@ -2,7 +2,7 @@ package com.votaciones.service;
 
 import com.opencsv.CSVReader;
 import com.votaciones.entity.Elector;
-import com.votaciones.repo.ElectorRepository;
+import com.votaciones.repo.ElectorRepo;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -13,9 +13,9 @@ import java.util.*;
 @Service
 public class ElectorCsvService {
 
-    private final ElectorRepository electorRepository;
+    private final ElectorRepo electorRepository;
 
-    public ElectorCsvService(ElectorRepository electorRepository) {
+    public ElectorCsvService(ElectorRepo electorRepository) {
         this.electorRepository = electorRepository;
     }
 

@@ -1,11 +1,8 @@
 package com.votaciones.service;
 
 import com.opencsv.CSVReader;
-import com.opencsv.bean.HeaderColumnNameTranslateMappingStrategy;
-import com.opencsv.bean.StatefulBeanToCsv;
 import com.votaciones.entity.Elector;
 import com.votaciones.repo.ElectorRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -14,26 +11,35 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Service
-@RequiredArgsConstructor
 public class ElectorCsvService {
 
     private final ElectorRepository electorRepository;
 
+    public ElectorCsvService(ElectorRepository electorRepository) {
+        this.electorRepository = electorRepository;
+    }
+
     public int importar(MultipartFile file) throws Exception {
-        if (file == null || file.isEmpty()) throw new IllegalArgumentException("Adjunta un archivo CSV");
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Adjunta un archivo CSV");
+        }
 
         List<Elector> toSave = new ArrayList<>();
-        try (CSVReader reader = new CSVReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
-            String[] header = reader.readNext(); // lee encabezado
+        try (CSVReader reader =
+                     new CSVReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+
+            String[] header = reader.readNext();
             if (header == null) throw new IllegalArgumentException("CSV sin encabezado");
 
             Map<String, Integer> idx = new HashMap<>();
-            for (int i = 0; i < header.length; i++) idx.put(header[i].trim().toLowerCase(), i);
+            for (int i = 0; i < header.length; i++) {
+                idx.put(header[i].trim().toLowerCase(), i);
+            }
 
-            // columnas esperadas
-            String[] req = {"id_elector","nombres","password","estado","codigo_dane"};
-            for (String r : req)
-                if (!idx.containsKey(r)) throw new IllegalArgumentException("Falta columna: " + r);
+            String[] need = {"id_elector", "nombres", "password", "estado", "codigo_dane"};
+            for (String n : need) if (!idx.containsKey(n)) {
+                throw new IllegalArgumentException("Falta columna: " + n);
+            }
 
             String[] row;
             while ((row = reader.readNext()) != null) {
@@ -42,7 +48,8 @@ public class ElectorCsvService {
                 e.setIdElector(Long.parseLong(row[idx.get("id_elector")].trim()));
                 e.setNombres(row[idx.get("nombres")].trim());
                 e.setPassword(row[idx.get("password")].trim());
-                e.setEstado(row[idx.get("estado")].isBlank() ? "Habilitado" : row[idx.get("estado")].trim());
+                String estado = row[idx.get("estado")].trim();
+                e.setEstado(estado.isEmpty() ? "Habilitado" : estado);
                 e.setCodigoDane(Integer.parseInt(row[idx.get("codigo_dane")].trim()));
                 toSave.add(e);
             }

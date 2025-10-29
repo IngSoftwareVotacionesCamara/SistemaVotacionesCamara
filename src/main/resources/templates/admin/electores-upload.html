@@ -2,32 +2,19 @@
 <html lang="es" xmlns:th="http://www.thymeleaf.org"
       th:replace="layout :: content (~{::body})">
 <body>
-
 <div class="page-head">
     <h1>Cargar electores (CSV)</h1>
 </div>
 
-<div class="panel">
-    <form th:action="@{/admin/electores/upload-csv}" method="post" enctype="multipart/form-data" class="form">
-        <div class="form-row">
-            <label for="file">Archivo CSV</label>
-            <input id="file" name="file" type="file" accept=".csv" required>
-        </div>
-        <div class="actions">
-            <button class="btn btn-primary" type="submit">Subir</button>
-            <a class="btn" th:href="@{/admin/candidatos}">Volver</a>
-        </div>
-    </form>
+<form th:action="@{/admin/electores/upload-csv}" method="post" enctype="multipart/form-data" class="form">
+    <label>Archivo CSV</label>
+    <input type="file" name="file" accept=".csv" required>
+    <button class="btn btn-primary" type="submit">Subir</button>
+</form>
 
-    <div class="muted" style="margin-top:10px">
-        <p><strong>Formato esperado:</strong></p>
-        <pre>
-id_elector,nombres,password,estado,codigo_dane
-1001,ANA PEREZ,clave123,Habilitado,11001
-1002,CARLOS RUIZ,clave456,Habilitado,11001
-</pre>
-    </div>
+<div class="muted" style="margin-top:10px">
+    <p><strong>Encabezado esperado:</strong></p>
+    <pre>id_elector,nombres,password,estado,codigo_dane</pre>
 </div>
-
 </body>
 </html>

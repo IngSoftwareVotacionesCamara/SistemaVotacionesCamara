@@ -9,27 +9,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 public class AdminController {
 
     @GetMapping
+    public String adminHome() {
+        return "redirect:/admin/partidos";
+    }
+
+    @GetMapping("/dashboard")
     public String dashboard() {
         return "admin/dashboard";
     }
 
-    @GetMapping("/candidatos")
-    public String verCandidatos() {
-        return "admin/candidatos-list";
-    }
-
-    @GetMapping("/circunscripciones")
-    public String verCircunscripciones() {
-        return "admin/circuns-list";
-    }
-
-    @GetMapping("/elecciones/nueva")
-    public String programarEleccion() {
-        return "admin/elecciones-form";
-    }
-
-    @GetMapping("/electores/upload-csv")
-    public String subirElectoresCsv() {
-        return "admin/electores-upload";
-    }
 }

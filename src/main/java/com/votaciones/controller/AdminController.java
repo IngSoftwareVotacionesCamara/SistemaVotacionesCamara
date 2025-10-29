@@ -15,7 +15,7 @@ public class AdminController {
 
     @GetMapping("/partidos")
     public String verPartidos() {
-        return "admin/partidos-list";
+        return "redirect:/admin/partidos-list";
     }
 
     @GetMapping("/candidatos")

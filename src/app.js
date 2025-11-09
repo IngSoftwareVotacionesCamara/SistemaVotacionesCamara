@@ -6,6 +6,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import { pool } from "./db.js";
 
 import authRoutes from "./routes/auth.js";
 import votoRoutes from "./routes/voto.js";
@@ -36,4 +37,19 @@ app.use(express.static(path.join(__dirname, "../frontend")));
 
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/index.html"));
+});
+
+
+app.get("/api/_diag", async (_req, res) => {
+  try {
+    const a = await pool.query("select current_database() as db");
+    const b = await pool.query(`
+      select count(*)::int as ok
+      from information_schema.tables
+      where table_schema='votaciones' and table_name='electores'
+    `);
+    res.json({ db: a.rows[0].db, electoresTable: !!b.rows[0].ok });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
 });

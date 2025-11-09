@@ -7,15 +7,16 @@ const msg = $("#msg");
 -------------------------- */
 $("#loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const msg = document.querySelector("#msg");
+  msg.classList.remove("text-success");
+  msg.classList.add("text-danger");
   msg.textContent = "";
 
-  const id_elector = document.querySelector("#id_elector").value.trim();
-  const password   = document.querySelector("#password").value.trim();
-  const tipo_id    = document.querySelector("#tipo_id").value;
+  const id_elector = $("#id_elector").value.trim();
+  const password   = $("#password").value.trim();
+  const tipo_id    = $("#tipo_id").value;
 
   if (!id_elector || !password) {
-    msg.textContent = "Ingrese identificación y contraseña.";
+    msg.textContent = "Ingrese su identificación y contraseña.";
     return;
   }
 
@@ -27,24 +28,28 @@ $("#loginForm").addEventListener("submit", async (e) => {
     });
 
     if (!resp.ok) {
-      // intenta JSON; si no, texto
       let detail = `Error ${resp.status}`;
       try {
         const j = await resp.json();
-        if (j && j.message) detail = j.message;
+        detail = j?.message || detail;
       } catch {
-        const t = await resp.text();
-        if (t) detail = t;
+        detail = await resp.text();
       }
       msg.textContent = detail;
       return;
     }
 
     const data = await resp.json();
+    // Guarda al elector para la siguiente pantalla
+    localStorage.setItem("elector", JSON.stringify(data.elector));
+
+    // Muestra éxito y redirige con un pequeño delay
     msg.classList.remove("text-danger");
     msg.classList.add("text-success");
-    msg.textContent = "Ingreso exitoso.";
-    // TODO: redirigir a la vista de votación
+    msg.textContent = "Ingreso exitoso. Redirigiendo…";
+    setTimeout(() => {
+      window.location.href = "/votar.html";
+    }, 1200);
   } catch (err) {
     console.error(err);
     msg.textContent = "Error de conexión con el servidor.";

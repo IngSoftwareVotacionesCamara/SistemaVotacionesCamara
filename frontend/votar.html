@@ -125,7 +125,18 @@
   </div>
 
   <script>
-    const API_URL = "http://localhost:3000/api";
+    const API_URL = "/api";
+    const electorRaw = localStorage.getItem("elector");
+  if (!electorRaw) {
+    window.location.href = "/";
+  } else {
+    try {
+      window.ELECTOR = JSON.parse(electorRaw); // elector global
+    } catch {
+      localStorage.removeItem("elector");
+      window.location.href = "/";
+    }
+  }
 
     (function pintarHorario(){
       const fecha = new Date();
@@ -135,7 +146,7 @@
         `Desde ${dia}, 8:00 a.m. hasta ${dia}, 4:00 p.m.`;
     })();
 
-    const elector = JSON.parse(sessionStorage.getItem("elector") || "null");
+    const elector = ELECTOR;
     const msg = document.getElementById("msg");
     const msgSel = document.getElementById("msgSel");
     const rbBlanco = document.getElementById("rbBlanco");

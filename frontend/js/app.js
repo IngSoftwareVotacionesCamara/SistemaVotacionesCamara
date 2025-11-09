@@ -7,14 +7,15 @@ const msg = $("#msg");
 -------------------------- */
 $("#loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
+  const msg = document.querySelector("#msg");
   msg.textContent = "";
 
-  const id_elector = $("#id_elector").value.trim();
-  const password = $("#password").value.trim();
-  const tipo_id = $("#tipo_id").value; // si luego lo usas en el backend
+  const id_elector = document.querySelector("#id_elector").value.trim();
+  const password   = document.querySelector("#password").value.trim();
+  const tipo_id    = document.querySelector("#tipo_id").value;
 
   if (!id_elector || !password) {
-    msg.textContent = "Ingrese su identificación y contraseña.";
+    msg.textContent = "Ingrese identificación y contraseña.";
     return;
   }
 
@@ -25,26 +26,26 @@ $("#loginForm").addEventListener("submit", async (e) => {
       body: JSON.stringify({ id_elector, password, tipo_id })
     });
 
-    // Si la API responde 4xx/5xx, intentamos leer el mensaje
     if (!resp.ok) {
-      let detail = "Error desconocido";
+      // intenta JSON; si no, texto
+      let detail = `Error ${resp.status}`;
       try {
-        const data = await resp.json();
-        detail = data?.message || detail;
-      } catch (_) {}
-      msg.textContent = detail; // Ej.: "No existe el documento" o "Contraseña incorrecta"
+        const j = await resp.json();
+        if (j && j.message) detail = j.message;
+      } catch {
+        const t = await resp.text();
+        if (t) detail = t;
+      }
+      msg.textContent = detail;
       return;
     }
 
     const data = await resp.json();
-    // Aquí podrías guardar info básica del elector y redirigir
-    // localStorage.setItem("elector", JSON.stringify(data.elector));
-    // location.href = "/votacion.html";
-    msg.textContent = "Ingreso exitoso (demo).";
     msg.classList.remove("text-danger");
     msg.classList.add("text-success");
+    msg.textContent = "Ingreso exitoso.";
+    // TODO: redirigir a la vista de votación
   } catch (err) {
-    // Si hay error de red/CORS/JS, cae aquí
     console.error(err);
     msg.textContent = "Error de conexión con el servidor.";
   }

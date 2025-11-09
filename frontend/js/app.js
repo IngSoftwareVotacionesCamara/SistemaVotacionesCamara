@@ -125,7 +125,7 @@ if (document.getElementById("btnVotar")) {
       const data = await res.json().catch(() => ({}));
 
       if (res.ok) {
-        msg.textContent = "✅ Voto registrado exitosamente. Redirigiendo...";
+        msg.textContent = "Voto registrado exitosamente. Redirigiendo...";
         msg.classList.remove("text-danger");
         msg.classList.add("text-success");
         setTimeout(() => (window.location.href = "gracias.html"), 1500);

@@ -35,10 +35,12 @@ app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
 
 app.use(express.static(path.join(__dirname, "../frontend")));
 
-app.get("*", (req, res) => {
+app.get("/", (_req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/index.html"));
 });
-
+app.get("/votar.html", (_req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/votar.html"));
+});
 
 app.get("/api/_diag", async (_req, res) => {
   try {

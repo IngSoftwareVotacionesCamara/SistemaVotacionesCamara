@@ -12,6 +12,8 @@ import votoRoutes from "./routes/voto.js";
 import catalogosRoutes from "./routes/catalogos.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const API_URL = "https://sistemavotacionescamara.onrender.com/api";
+
 
 dotenv.config();
 const app = express();
@@ -28,7 +30,7 @@ app.use("/api", catalogosRoutes);
 app.get("/api/health", (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ Servidor corriendo en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
 
 app.use(express.static(path.join(__dirname, "../frontend")));
 

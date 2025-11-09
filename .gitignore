@@ -1,0 +1,79 @@
+# ===========================
+# IGNORAR DEPENDENCIAS Y ENTORNOS
+# ===========================
+node_modules/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ===========================
+# LOGS Y ARCHIVOS TEMPORALES
+# ===========================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+
+# ===========================
+# SISTEMAS OPERATIVOS
+# ===========================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+desktop.ini
+
+# ===========================
+# COMPILADOS O TEMPORALES
+# ===========================
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# ===========================
+# ENTORNOS DE DESARROLLO
+# ===========================
+.vscode/
+.idea/
+*.iml
+
+# ===========================
+# ARCHIVOS DE CONSTRUCCIÓN / COMPILACIÓN
+# ===========================
+dist/
+build/
+coverage/
+.cache/
+out/
+
+# ===========================
+# FRONTEND (si usas herramientas de compilación)
+# ===========================
+frontend/node_modules/
+frontend/dist/
+frontend/.cache/
+
+# ===========================
+# BASES DE DATOS LOCALES O TEMPORALES
+# ===========================
+*.sqlite
+*.db
+*.sql~
+*.dump
+
+# ===========================
+# OTROS ARCHIVOS DE USO PERSONAL
+# ===========================
+*.zip
+*.rar
+*.7z

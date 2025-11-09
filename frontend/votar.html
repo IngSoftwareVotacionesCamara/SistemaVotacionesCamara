@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Votación - Cámara de Representantes</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body{background:#f4f7fb}
+    .header{background:#003366;color:#fff;padding:12px 28px;display:flex;align-items:center;justify-content:space-between}
+    .header img{height:46px}
+    .card-wrap{max-width:1000px;margin:36px auto}
+    .card{border-radius:14px}
+    .pill{display:inline-flex;align-items:center;gap:.5rem;padding:.6rem 1rem;border:1px solid #cfd6e4;border-radius:999px;background:#fff;cursor:pointer;font-weight:600}
+    .pill input{transform:scale(1.15)}
+    .pill.active{border-color:#0d6efd;box-shadow:0 0 0 3px rgba(13,110,253,.15)}
+    .partido-card{border:2px solid transparent;border-radius:12px;padding:14px;cursor:pointer;text-align:center;background:#fff}
+    .partido-card:hover{border-color:#0d6efd;background:#f0f6ff}
+    .partido-card.active{border-color:#0d6efd;background:#e7f1ff}
+    .blank-card{border:2px dashed #d5dced;border-radius:12px;padding:14px;background:#fcfdff;display:flex;align-items:center;justify-content:space-between}
+    .muted{color:#6b778c}
+    .question{font-size:1.25rem;font-weight:700;margin-bottom:6px}
+    .help{font-size:.95rem}
+    .badge-status{font-size:.9rem}
+    .disabledish{opacity:.65;pointer-events:none}
+  </style>
+</head>
+<body>
+
+  <!-- Encabezado institucional -->
+  <div class="header">
+    <div class="d-flex align-items-center gap-3">
+      <img src="img/logo_cne.png" alt="CNE" />
+      <div class="lh-sm">
+        <div style="font-size:.95rem">República de Colombia</div>
+        <div class="fw-bold">Sistema de Votación a Cámara de Representantes</div>
+      </div>
+    </div>
+    <div class="fw-semibold">Votaciones</div>
+  </div>
+
+  <div class="container card-wrap">
+    <!-- Estado -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div class="fw-semibold">Estado de la jornada:
+        <span class="badge bg-success badge-status">Abierta</span>
+      </div>
+      <div id="horarioJornada" class="text-muted small"></div>
+    </div>
+
+    <!-- Bloque 1: Identificación del votante -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Identificación del votante</h5>
+        <div class="row g-2">
+          <div class="col-md-6">
+            <label class="form-label">Tipo de identificación</label>
+            <input id="tipoIdent" class="form-control" disabled value="CC – Cédula de ciudadanía">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Número de identificación</label>
+            <input id="numIdent" class="form-control" disabled>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bloque 2: Modalidad -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Modalidad de voto</h5>
+        <div id="modGroup" class="d-flex flex-wrap gap-2">
+          <label class="pill" id="pill-territorial">
+            <input type="radio" name="modalidad" value="territorial" class="form-check-input me-1" checked>
+            Territorial
+          </label>
+          <label class="pill" id="pill-afro">
+            <input type="radio" name="modalidad" value="afro" class="form-check-input me-1">
+            Afrodescendiente
+          </label>
+          <label class="pill" id="pill-indigena">
+            <input type="radio" name="modalidad" value="indigena" class="form-check-input me-1">
+            Indígena
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bloque 3: Selección -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="question">¿Por cuál desea votar?</div>
+        <div class="help muted">Seleccione un partido o elija voto en blanco</div>
+
+        <!-- Voto en blanco -->
+        <div class="blank-card my-3" id="cardBlanco">
+          <div>
+            <strong>Voto en blanco</strong>
+            <div class="muted small">Seleccione para votar en blanco en esta circunscripción</div>
+          </div>
+          <input type="radio" name="partido" value="BLANCO" class="form-check-input" id="rbBlanco">
+        </div>
+
+        <!-- Lista de partidos -->
+        <div id="listaPartidos" class="row g-3"></div>
+        <div id="msgSel" class="text-danger mt-2"></div>
+      </div>
+    </div>
+
+    <!-- Bloque 4: Confirmación -->
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Confirmación</h5>
+        <div class="mb-2"><strong>Su selección:</strong> <span id="resumenSel" class="muted">—</span></div>
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="checkbox" id="chkDeclaracion">
+          <label class="form-check-label" for="chkDeclaracion">
+            Declaro que mi voto es personal y secreto.
+          </label>
+        </div>
+        <button id="btnVotar" class="btn btn-primary px-4" disabled>Confirmar voto</button>
+        <div id="msg" class="mt-3"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "http://localhost:3000/api";
+
+    (function pintarHorario(){
+      const fecha = new Date();
+      const fmt = { day: "2-digit", month: "2-digit", year: "numeric" };
+      const dia = fecha.toLocaleDateString("es-CO", fmt);
+      document.getElementById("horarioJornada").textContent =
+        `Desde ${dia}, 8:00 a.m. hasta ${dia}, 4:00 p.m.`;
+    })();
+
+    const elector = JSON.parse(sessionStorage.getItem("elector") || "null");
+    const msg = document.getElementById("msg");
+    const msgSel = document.getElementById("msgSel");
+    const rbBlanco = document.getElementById("rbBlanco");
+    const listaPartidos = document.getElementById("listaPartidos");
+    const btnVotar = document.getElementById("btnVotar");
+    const resumenSel = document.getElementById("resumenSel");
+    const chkDeclaracion = document.getElementById("chkDeclaracion");
+
+    if(!elector){
+      msg.className = "text-danger";
+      msg.textContent = "Debe iniciar sesión nuevamente.";
+    }else{
+      document.getElementById("numIdent").value = elector.id_elector;
+    }
+
+    const circMap = { territorial: null, afro: null, indigena: null };
+    let cod_cir = null;
+    let partidoSeleccionado = null;
+
+    async function cargarCircunscripciones(){
+      try{
+        const res = await fetch(`${API_URL}/circunscripciones?codigo_dane=${elector.codigo_dane}`);
+        const data = await res.json();
+        data.forEach(c => {
+          const nombre = (c.nombre || "").toLowerCase();
+          if (nombre.includes("afro")) circMap.afro = c.cod_cir;
+          else if (nombre.includes("indi")) circMap.indigena = c.cod_cir;
+          else circMap.territorial = c.cod_cir;
+        });
+
+        const initial =
+          circMap.territorial ?? circMap.afro ?? circMap.indigena ?? (data[0]?.cod_cir || null);
+        if(initial){
+          document.getElementById("pill-territorial").classList.toggle("active", initial===circMap.territorial);
+          document.getElementById("pill-afro").classList.toggle("active", initial===circMap.afro);
+          document.getElementById("pill-indigena").classList.toggle("active", initial===circMap.indigena);
+          cod_cir = initial;
+          await cargarPartidos(cod_cir);
+        }else msgSel.textContent = "No hay circunscripciones disponibles.";
+      }catch(e){
+        console.error(e);
+        msgSel.textContent = "Error al cargar las circunscripciones.";
+      }
+    }
+
+    document.querySelectorAll('input[name="modalidad"]').forEach(rb=>{
+      rb.addEventListener("change", async ()=>{
+        document.querySelectorAll(".pill").forEach(p => p.classList.remove("active"));
+        rb.parentElement.classList.add("active");
+        const val = rb.value;
+        cod_cir = circMap[val] ?? null;
+        partidoSeleccionado = null;
+        rbBlanco.checked = false;
+        resumenSel.textContent = "—";
+        btnVotar.disabled = true;
+        msgSel.textContent = "";
+        if(!cod_cir){ listaPartidos.innerHTML = ""; msgSel.textContent = "No hay partidos para esta modalidad."; return; }
+        await cargarPartidos(cod_cir);
+      });
+    });
+
+    async function cargarPartidos(codCir){
+      try{
+        listaPartidos.innerHTML = `<div class="text-center text-secondary py-3">Cargando partidos...</div>`;
+        const res = await fetch(`${API_URL}/partidos?codigo_dane=${elector.codigo_dane}&cod_cir=${codCir}`);
+        const data = await res.json();
+        listaPartidos.innerHTML = "";
+        if(!Array.isArray(data) || data.length===0){
+          msgSel.textContent = "No hay partidos disponibles para esta circunscripción.";
+          return;
+        }
+        data.forEach(p=>{
+          const col = document.createElement("div");
+          col.className = "col-md-6";
+          col.innerHTML = `
+            <div class="partido-card" data-id="${p.cod_partido}">
+              <div class="fw-bold">${p.nombre}</div>
+              <div class="muted small">Lista ${p.tipo_lista ? p.tipo_lista.toUpperCase() : "SIN DEFINIR"}</div>
+            </div>`;
+          const card = col.querySelector(".partido-card");
+          card.addEventListener("click", ()=>{
+            document.querySelectorAll(".partido-card").forEach(c=>c.classList.remove("active"));
+            rbBlanco.checked = false;
+            card.classList.add("active");
+            partidoSeleccionado = p.cod_partido;
+            resumenSel.textContent = `Partido: ${p.nombre}`;
+            btnVotar.disabled = !chkDeclaracion.checked;
+            msgSel.textContent = "";
+          });
+          listaPartidos.appendChild(col);
+        });
+      }catch(e){
+        console.error(e);
+        msgSel.textContent = "Error al cargar los partidos.";
+      }
+    }
+
+    // ✅ Habilitar voto en blanco con confirmación
+    rbBlanco.addEventListener("change", ()=>{
+      if(rbBlanco.checked){
+        document.querySelectorAll(".partido-card").forEach(c=>c.classList.remove("active"));
+        partidoSeleccionado = 0;
+        resumenSel.textContent = "Voto en blanco";
+        btnVotar.disabled = !chkDeclaracion.checked;
+        msgSel.textContent = "";
+      }
+    });
+
+    chkDeclaracion.addEventListener("change", ()=>{
+      const haySeleccion = partidoSeleccionado !== null;
+      btnVotar.disabled = !(chkDeclaracion.checked && haySeleccion);
+    });
+
+    btnVotar.addEventListener("click", async ()=>{
+      msg.className = ""; msg.textContent = "";
+      if(!elector){ msg.className="text-danger"; msg.textContent="Sesión inválida."; return; }
+      if(!cod_cir){ msg.className="text-danger"; msg.textContent="Seleccione una modalidad."; return; }
+      if(partidoSeleccionado===null){ msg.className="text-danger"; msg.textContent="Seleccione un partido o voto en blanco."; return; }
+      if(!chkDeclaracion.checked){ msg.className="text-danger"; msg.textContent="Debe aceptar la declaración."; return; }
+
+      try{
+        const body = { 
+          id_elector: elector.id_elector, 
+          codigo_dane: elector.codigo_dane, 
+          cod_cir, 
+          cod_partido: (partidoSeleccionado===0 ? null : partidoSeleccionado)
+        };
+        const res = await fetch(`${API_URL}/votar`, { 
+          method: "POST", 
+          headers: { "Content-Type": "application/json" }, 
+          body: JSON.stringify(body) 
+        });
+        const data = await res.json();
+
+        if(res.ok){
+          msg.className="text-success";
+          msg.textContent="✅ Voto registrado exitosamente.";
+          setTimeout(()=>{ window.location.href="index.html"; }, 2000);
+        }else{
+          msg.className="text-danger";
+          msg.textContent = data.message || "No se pudo registrar el voto.";
+        }
+      }catch(e){
+        console.error(e);
+        msg.className="text-danger";
+        msg.textContent = "Error en la conexión con el servidor.";
+      }
+    });
+
+    if(elector){ cargarCircunscripciones(); }
+  </script>
+</body>
+</html>

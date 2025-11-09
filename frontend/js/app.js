@@ -1,41 +1,54 @@
-const API_URL = "http://localhost:3000/api";
+const API_URL = "/api";
+const $ = (sel) => document.querySelector(sel);
+const msg = $("#msg");
 
 /* -------------------------
    LOGIN DEL ELECTOR
 -------------------------- */
-if (document.getElementById("loginForm")) {
-  document.getElementById("loginForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
+$("#loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  msg.textContent = "";
 
-    const id_elector = document.getElementById("id_elector").value.trim();
-    const password = document.getElementById("password").value.trim();
-    const msg = document.getElementById("msg");
+  const id_elector = $("#id_elector").value.trim();
+  const password = $("#password").value.trim();
+  const tipo_id = $("#tipo_id").value; // si luego lo usas en el backend
 
-    msg.textContent = "";
+  if (!id_elector || !password) {
+    msg.textContent = "Ingrese su identificación y contraseña.";
+    return;
+  }
 
-    try {
-      const res = await fetch(`${API_URL}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_elector, password }),
-      });
+  try {
+    const resp = await fetch(`${API_URL}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id_elector, password, tipo_id })
+    });
 
-      const data = await res.json();
-
-      if (res.ok) {
-        // Guardar el elector autenticado en sessionStorage
-        sessionStorage.setItem("elector", JSON.stringify(data.elector));
-        // Redirigir al módulo de votación
-        window.location.href = "votar.html";
-      } else {
-        msg.textContent = data.message || "Credenciales incorrectas";
-      }
-    } catch (error) {
-      console.error("Error en login:", error);
-      msg.textContent = "Error de conexión con el servidor";
+    // Si la API responde 4xx/5xx, intentamos leer el mensaje
+    if (!resp.ok) {
+      let detail = "Error desconocido";
+      try {
+        const data = await resp.json();
+        detail = data?.message || detail;
+      } catch (_) {}
+      msg.textContent = detail; // Ej.: "No existe el documento" o "Contraseña incorrecta"
+      return;
     }
-  });
-}
+
+    const data = await resp.json();
+    // Aquí podrías guardar info básica del elector y redirigir
+    // localStorage.setItem("elector", JSON.stringify(data.elector));
+    // location.href = "/votacion.html";
+    msg.textContent = "Ingreso exitoso (demo).";
+    msg.classList.remove("text-danger");
+    msg.classList.add("text-success");
+  } catch (err) {
+    // Si hay error de red/CORS/JS, cae aquí
+    console.error(err);
+    msg.textContent = "Error de conexión con el servidor.";
+  }
+});
 
 /* -------------------------
    CATÁLOGOS DE DATOS

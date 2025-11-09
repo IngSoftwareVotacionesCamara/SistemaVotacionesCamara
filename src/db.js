@@ -4,10 +4,11 @@ dotenv.config();
 
 const { Pool } = pkg;
 
+if (!process.env.DATABASE_URL) {
+  console.error('DATABASE_URL no está definida. Usando localhost (fallará en Render).');
+}
+
 export const pool = new Pool({
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DB_NAME,
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
 });

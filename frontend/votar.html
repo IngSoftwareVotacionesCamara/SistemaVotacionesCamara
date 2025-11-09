@@ -130,12 +130,8 @@
   if (!electorRaw) {
     window.location.href = "/";
   } else {
-    try {
-      window.ELECTOR = JSON.parse(electorRaw); // elector global
-    } catch {
-      localStorage.removeItem("elector");
-      window.location.href = "/";
-    }
+    try { window.ELECTOR = JSON.parse(electorRaw); }
+    catch { localStorage.removeItem("elector"); window.location.href = "/"; }
   }
 
     (function pintarHorario(){

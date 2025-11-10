@@ -89,8 +89,20 @@
     <!-- Bloque 3: Selección -->
     <div class="card mb-3">
       <div class="card-body">
-        <div class="question">¿Por cuál desea votar?</div>
-        <div class="help muted">Seleccione un partido o elija voto en blanco</div>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div>
+            <div class="question mb-0">¿Por cuál desea votar?</div>
+            <div class="help muted">Seleccione un partido o elija voto en blanco</div>
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <input id="buscador"
+                   class="form-control form-control-sm"
+                   style="width:260px"
+                   placeholder="Buscar partido o candidato..." />
+            <small id="contadorResultados" class="text-muted"></small>
+          </div>
+        </div>
 
         <!-- Voto en blanco -->
         <div class="blank-card my-3" id="cardBlanco">
@@ -150,6 +162,45 @@
     const btnVotar = document.getElementById("btnVotar");
     const resumenSel = document.getElementById("resumenSel");
     const chkDeclaracion = document.getElementById("chkDeclaracion");
+
+    const buscador = document.getElementById("buscador");
+    const contadorResultados = document.getElementById("contadorResultados");
+
+    buscador.addEventListener("input", () => {
+      const filtro = buscador.value.trim().toLowerCase();
+
+      // Tomamos todos los partidos renderizados
+      const cards = Array.from(document.querySelectorAll("#listaPartidos .partido-card"));
+
+      // Si no hay partidos cargados, salir
+      if (!cards.length) {
+        contadorResultados.textContent = "";
+        return;
+      }
+
+      let visibles = 0;
+      cards.forEach(card => {
+        const nombrePartido = card.querySelector(".fw-bold")?.textContent.toLowerCase() || "";
+        const candidatos = Array.from(card.querySelectorAll(".cand-btn"))
+          .map(c => c.textContent.toLowerCase())
+          .join(" "); // si agregas luego los círculos de candidatos
+
+        // Coincidencia por nombre de partido o candidato
+        const coincide = nombrePartido.includes(filtro) || candidatos.includes(filtro);
+
+        card.parentElement.style.display = coincide ? "" : "none"; // muestra u oculta el <div class="col-md-6">
+        if (coincide) visibles++;
+      });
+
+      // Actualiza contador de resultados
+      if (filtro === "") {
+        contadorResultados.textContent = "";
+      } else if (visibles === 0) {
+        contadorResultados.textContent = "Sin coincidencias";
+      } else {
+        contadorResultados.textContent = `${visibles} resultado${visibles > 1 ? "s" : ""}`;
+      }
+    });
 
     if(!elector){
       msg.className = "text-danger";

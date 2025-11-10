@@ -217,31 +217,56 @@
       const res = await fetch(`${API_URL}/circunscripciones?codigo_dane=${elector.codigo_dane}`);
       const data = await res.json();
 
-      // Mapear circunscripciones según su nombre
-      data.forEach(c => {
-        const nombre = (c.nombre || "").toLowerCase();
-        if (nombre.includes("afro")) circMap.afro = c.cod_cir;
-        else if (nombre.includes("indi")) circMap.indigena = c.cod_cir;
-        else circMap.territorial = c.cod_cir;
-      });
+      // Normaliza texto y mapea con reglas explícitas (sin sobre-escribir si ya está seteado)
+      const norm = s => (s || "")
+        .normalize("NFD").replace(/\p{Diacritic}/gu, "")
+        .toLowerCase().trim();
 
-      // ✅ Detectar cuál modalidad está seleccionada actualmente
-      const seleccionada = document.querySelector('input[name="modalidad"]:checked')?.value || "territorial";
-      if (seleccionada === "indigena") cod_cir = circMap.indigena;
-      else if (seleccionada === "afro") cod_cir = circMap.afro;
-      else cod_cir = circMap.territorial;
+      circMap.territorial = null;
+      circMap.afro        = null;
+      circMap.indigena    = null;
 
-      // Pintar visualmente la selección actual
-      document.getElementById("pill-territorial")?.classList.toggle("active", seleccionada === "territorial");
-      document.getElementById("pill-afro")?.classList.toggle("active", seleccionada === "afro");
-      document.getElementById("pill-indigena")?.classList.toggle("active", seleccionada === "indigena");
+      for (const c of data) {
+        const n = norm(c.nombre);
+        if (!circMap.afro && (n.includes("afro") || n.includes("comunidades negras"))) {
+          circMap.afro = c.cod_cir;
+          continue;
+        }
+        if (!circMap.indigena && (n.includes("indigena") || n.includes("indígena"))) {
+          circMap.indigena = c.cod_cir;
+          continue;
+        }
+        // Territorial / Ordinaria / General
+        if (!circMap.territorial && (n.includes("territorial") || n.includes("ordinaria") || n.includes("general"))) {
+          circMap.territorial = c.cod_cir;
+        }
+      }
+
+      // Si aún no se detectó "territorial", toma la que NO sea afro ni indígena y deja log
+      if (!circMap.territorial) {
+        const resto = data.find(c => {
+          const n = norm(c.nombre);
+          return !n.includes("afro") && !n.includes("indigena") && !n.includes("indígena");
+        });
+        if (resto) circMap.territorial = resto.cod_cir;
+        console.log("⚠️ circMap.territorial fijada por descarte:", circMap.territorial);
+      }
+
+      // circunscripción según el radio seleccionado (sin fallbacks cruzados)
+      const sel = document.querySelector('input[name="modalidad"]:checked')?.value || "territorial";
+      cod_cir = sel === "afro" ? circMap.afro : sel === "indigena" ? circMap.indigena : circMap.territorial;
+
+      // Marca visual
+      document.getElementById("pill-territorial")?.classList.toggle("active", sel === "territorial");
+      document.getElementById("pill-afro")?.classList.toggle("active", sel === "afro");
+      document.getElementById("pill-indigena")?.classList.toggle("active", sel === "indigena");
 
       if (!cod_cir) {
-        msgSel.textContent = "No hay circunscripciones disponibles para esta modalidad.";
+        listaPartidos.innerHTML = `<div class="text-center text-secondary py-3">No hay partidos para esta modalidad.</div>`;
         return;
       }
 
-      console.log("🟢 circunscripción seleccionada:", cod_cir, "modo:", seleccionada);
+      console.log("🧭 circMap =", circMap, " | modalidad:", sel, " | cod_cir:", cod_cir);
       await cargarPartidos(cod_cir);
     } catch (e) {
       console.error(e);
@@ -460,24 +485,18 @@
     rb.addEventListener("change", async () => {
       document.querySelectorAll(".pill").forEach(p => p.classList.remove("active"));
       rb.parentElement.classList.add("active");
-      const val = rb.value;
 
-      // 🔹 Recalcular circunscripción según selección
-      if (val === "afro") cod_cir = circMap.afro;
-      else if (val === "indigena") cod_cir = circMap.indigena;
-      else cod_cir = circMap.territorial;
-
-      console.log("🟣 Cambio de modalidad:", val, "→ cod_cir =", cod_cir);
+      const val = rb.value; // 'territorial' | 'afro' | 'indigena'
+      cod_cir = val === "afro" ? circMap.afro : val === "indigena" ? circMap.indigena : circMap.territorial;
 
       partidosData = [];
       candidatosCache.clear();
       filtro = "";
-      buscador.value = "";
+      if (buscador) buscador.value = "";
       setSeleccion(null);
 
       if (!cod_cir) {
-        msgSel.textContent = "No hay partidos para esta modalidad.";
-        listaPartidos.innerHTML = "";
+        listaPartidos.innerHTML = `<div class="text-center text-secondary py-3">No hay partidos para esta modalidad.</div>`;
         return;
       }
       await cargarPartidos(cod_cir);

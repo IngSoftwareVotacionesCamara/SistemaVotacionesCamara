@@ -77,26 +77,26 @@ router.get("/partidos", async (req, res) => {
    GET /api/candidatos?codigo_dane=11&cod_cir=101&cod_partido=1
 ========================= */
 router.get("/candidatos", async (req, res) => {
-  let { codigo_dane, cod_cir, cod_partido } = req.query;
-
-  if ([codigo_dane, cod_cir, cod_partido].some(v => v === undefined)) {
-    return res.status(400).json({ message: "Faltan parámetros: codigo_dane, cod_cir, cod_partido" });
-  }
-  codigo_dane = parseInt(codigo_dane, 10);
-  cod_cir     = parseInt(cod_cir, 10);
-  cod_partido = parseInt(cod_partido, 10);
-  if ([codigo_dane, cod_cir, cod_partido].some(Number.isNaN)) {
-    return res.status(400).json({ message: "Parámetros inválidos: deben ser numéricos" });
-  }
-
   try {
-    // Detectar tipo de lista
+    let { codigo_dane, cod_cir, cod_partido } = req.query;
+
+    // Validación de presencia y tipo
+    if ([codigo_dane, cod_cir, cod_partido].some(v => v === undefined)) {
+      return res.status(400).json({ message: "Faltan parámetros: codigo_dane, cod_cir, cod_partido" });
+    }
+    if (![codigo_dane, cod_cir, cod_partido].every(v => /^\d+$/.test(String(v)))) {
+      return res.status(400).json({ message: "Parámetros inválidos: deben ser numéricos" });
+    }
+
+    codigo_dane = parseInt(codigo_dane, 10);
+    cod_cir     = parseInt(cod_cir, 10);
+    cod_partido = parseInt(cod_partido, 10);
+
+    // 1) Detectar tipo de lista en ADSCRIBE
     const tl = await pool.query(
-      `
-      SELECT a.tipo_lista
-      FROM votaciones.adscribe a
-      WHERE a.codigo_dane = $1 AND a.cod_cir = $2 AND a.cod_partido = $3;
-      `,
+      `SELECT a.tipo_lista
+         FROM votaciones.adscribe a
+        WHERE a.codigo_dane = $1 AND a.cod_cir = $2 AND a.cod_partido = $3`,
       [codigo_dane, cod_cir, cod_partido]
     );
 
@@ -104,29 +104,35 @@ router.get("/candidatos", async (req, res) => {
       return res.status(404).json({ message: "Partido no adscrito a la circunscripción/departamento" });
     }
 
-    const tipo = (tl.rows[0].tipo_lista || "").toLowerCase();
-    if (tipo === "cerrada") {
-      // lista cerrada → no devuelve candidatos (204 + header)
+    const tipoLista = (tl.rows[0].tipo_lista || "").toLowerCase();
+
+    // 2) Si es CERRADA -> no hay candidatos seleccionables
+    if (tipoLista === "cerrada") {
       res.setHeader("X-Lista", "cerrada");
-      return res.status(204).send();
+      return res.status(204).send(); // No Content
     }
 
-    // lista abierta → devolver candidatos
-    const { rows } = await pool.query(
-      `
-      SELECT c.cod_partido, c.codigo_dane, c.cod_cir, c.num_lista,
-             e.id_elector, e.nombres AS nombre
+    // 3) Si es ABIERTA -> devolver candidatos (num de tarjetón)
+    const q = `
+      SELECT
+        c.num_lista,                  -- número de tarjetón
+        e.id_elector,
+        e.nombres AS nombre           -- opcional; útil para tooltip/búsqueda
       FROM votaciones.candidatos c
-      JOIN votaciones.electores e ON e.id_elector = c.id_elector
-      WHERE c.codigo_dane = $1 AND c.cod_cir = $2 AND c.cod_partido = $3
-      ORDER BY c.num_lista, e.nombres;
-      `,
-      [codigo_dane, cod_cir, cod_partido]
-    );
+      JOIN votaciones.electores  e ON e.id_elector = c.id_elector
+     WHERE c.codigo_dane = $1
+       AND c.cod_cir     = $2
+       AND c.cod_partido = $3
+     ORDER BY c.num_lista ASC, e.nombres ASC
+    `;
+    const { rows } = await pool.query(q, [codigo_dane, cod_cir, cod_partido]);
 
+    // puedes incluir el header informativo
+    res.setHeader("X-Lista", "abierta");
     return res.json(rows);
+
   } catch (err) {
-    console.error("SQL /candidatos:", err);
+    console.error("GET /candidatos", err);
     return res.status(500).json({ message: "Error consultando candidatos" });
   }
 });

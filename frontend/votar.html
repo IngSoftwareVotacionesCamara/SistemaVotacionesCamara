@@ -184,6 +184,19 @@
   const candidatosCache = new Map();
   let seleccion = null;
   let filtro = "";
+  // Carga selección previa si existía
+   // Carga selección previa si existía
+  const seleccionGuardada = loadSeleccionGlobal();
+  if (seleccionGuardada) {
+    seleccion = seleccionGuardada;
+    // pinta el resumen aunque todavía no hayas cargado partidos
+    if (typeof setSeleccion === "function") {
+      // evita que deshabilite el botón por no estar en la misma circ (lo haremos luego)
+      const prev = seleccion;
+      seleccion = null;
+      setSeleccion(prev);
+    }
+  }
 
   // Devuelve el texto de la circunscripción actual según el radio seleccionado
   function getCircLabel() {
@@ -192,6 +205,15 @@
     if (rb.value === "afro") return "Afrodescendiente";
     if (rb.value === "indigena") return "Indígena";
     return "Territorial";
+  }
+
+  function loadSeleccionGlobal() {
+    try { return JSON.parse(sessionStorage.getItem("seleccion_global") || "null"); }
+    catch { return null; }
+  }
+  function saveSeleccionGlobal(sel) {
+    if (sel) sessionStorage.setItem("seleccion_global", JSON.stringify(sel));
+    else sessionStorage.removeItem("seleccion_global");
   }
 
   // === 3) Mostrar horario de jornada ===
@@ -442,6 +464,7 @@
                 num_lista: Number(rb.dataset.num),
                 nombre_cand: rb.parentElement.getAttribute("title") || "", // viene del title con el nombre
                 nombre_partido: p.nombre
+                cod_cir: cod_cir
               });
               msgSel.textContent = "";
             });
@@ -472,6 +495,10 @@
     if (!cod_cir) { msgSel.textContent = "Seleccione una modalidad."; return; }
     if (!seleccion) { msgSel.textContent = "Seleccione un partido, un candidato o voto en blanco."; return; }
     if (!chkDeclaracion.checked) { msgSel.textContent = "Debe aceptar la declaración."; return; }
+
+    const codCirEnviar = seleccion.cod_cir;
+    if (!codCirEnviar) { msgSel.textContent = "No se pudo determinar la circunscripción de la selección."; return; }
+
 
     try {
       const body = {
@@ -508,14 +535,15 @@
       document.querySelectorAll(".pill").forEach(p => p.classList.remove("active"));
       rb.parentElement.classList.add("active");
 
-      const val = rb.value; // 'territorial' | 'afro' | 'indigena'
+      const val = rb.value;
       cod_cir = val === "afro" ? circMap.afro : val === "indigena" ? circMap.indigena : circMap.territorial;
 
       partidosData = [];
       candidatosCache.clear();
       filtro = "";
       if (buscador) buscador.value = "";
-      setSeleccion(null);
+
+      btnVotar.disabled = !(chkDeclaracion.checked && seleccion);
 
       if (!cod_cir) {
         listaPartidos.innerHTML = `<div class="text-center text-secondary py-3">No hay partidos para esta modalidad.</div>`;

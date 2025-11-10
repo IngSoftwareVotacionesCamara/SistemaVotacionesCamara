@@ -42,32 +42,46 @@ router.get("/circunscripciones", async (req, res) => {
    GET /api/partidos?codigo_dane=11&cod_cir=101
 ========================= */
 router.get("/partidos", async (req, res) => {
-  let { codigo_dane, cod_cir } = req.query;
-
-  if (codigo_dane === undefined || cod_cir === undefined) {
-    return res.status(400).json({ message: "Faltan parámetros: codigo_dane y cod_cir" });
-  }
-  codigo_dane = parseInt(codigo_dane, 10);
-  cod_cir     = parseInt(cod_cir, 10);
-  if (Number.isNaN(codigo_dane) || Number.isNaN(cod_cir)) {
-    return res.status(400).json({ message: "Parámetros inválidos: deben ser numéricos" });
-  }
-
   try {
-    const { rows } = await pool.query(
-      `
-      SELECT p.cod_partido, p.nombreP AS nombre, a.tipo_lista
+    let { codigo_dane, cod_cir } = req.query;
+
+    // Validaciones
+    if (codigo_dane === undefined || cod_cir === undefined) {
+      return res.status(400).json({ message: "Faltan parámetros: codigo_dane y cod_cir" });
+    }
+    if (![codigo_dane, cod_cir].every(v => /^\d+$/.test(String(v)))) {
+      return res.status(400).json({ message: "Parámetros inválidos: deben ser numéricos" });
+    }
+
+    codigo_dane = parseInt(codigo_dane, 10);
+    cod_cir     = parseInt(cod_cir, 10);
+
+    // Une ADSCRIBE (tipo_lista) con PARTIDOS (nombre)
+    const q = `
+      SELECT
+        a.cod_partido,
+        p.nombreP AS nombre,
+        UPPER(a.tipo_lista) AS tipo_lista
       FROM votaciones.adscribe a
-      JOIN votaciones.partidos p ON a.cod_partido = p.cod_partido
-      WHERE a.codigo_dane = $1 AND a.cod_cir = $2
+      JOIN votaciones.partidos p
+        ON p.cod_partido = a.cod_partido
+      WHERE a.codigo_dane = $1
+        AND a.cod_cir     = $2
       ORDER BY p.nombreP;
-      `,
-      [codigo_dane, cod_cir]
-    );
-    // Siempre devolver array
-    return res.json(rows);
+    `;
+    const { rows } = await pool.query(q, [codigo_dane, cod_cir]);
+
+    // Normaliza la forma de salida que consume el front
+    const out = rows.map(r => ({
+      cod_partido: r.cod_partido,
+      nombre:      r.nombre,
+      tipo_lista:  r.tipo_lista  // "ABIERTA" | "CERRADA"
+    }));
+
+    // Siempre un array
+    return res.json(out);
   } catch (err) {
-    console.error("SQL /partidos:", err);
+    console.error("GET /partidos:", err);
     return res.status(500).json({ message: "Error consultando partidos" });
   }
 });

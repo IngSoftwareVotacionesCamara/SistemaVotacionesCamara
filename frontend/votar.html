@@ -113,137 +113,327 @@
 </div>
 
 <script>
-const API_URL="/api";
-let elector=null;
-try{elector=JSON.parse(sessionStorage.getItem("elector")||"null");}catch{}
-if(!elector||!elector.id_elector){window.location="/";}
-document.getElementById("numIdent").value=elector.id_elector;
+const API_URL = "/api";
 
-const msgSel=document.getElementById("msgSel");
-const listaPartidos=document.getElementById("listaPartidos");
-const resumenSel=document.getElementById("resumenSel");
-const btnVotar=document.getElementById("btnVotar");
-const chkDeclaracion=document.getElementById("chkDeclaracion");
-const rbBlanco=document.getElementById("rbBlanco");
-const buscador=document.getElementById("buscador");
-const contadorResultados=document.getElementById("contadorResultados");
+// ==== Sesión elector ====
+let elector = null;
+try { elector = JSON.parse(sessionStorage.getItem("elector") || "null"); } catch {}
+if (!elector || !elector.id_elector) { window.location.assign("/"); }
+document.getElementById("numIdent").value = elector.id_elector ?? "";
 
-let cod_cir=null,partidosData=[],filtro="",seleccion=null;
-const candidatosCache=new Map();
-const circMap={territorial:null,afro:null,indigena:null};
-const circNames={territorial:"Territorial",afro:"Afrodescendiente",indigena:"Indígena"};
+// ==== Refs ====
+const msgSel = document.getElementById("msgSel");
+const listaPartidos = document.getElementById("listaPartidos");
+const resumenSel = document.getElementById("resumenSel");
+const btnVotar = document.getElementById("btnVotar");
+const chkDeclaracion = document.getElementById("chkDeclaracion");
+const rbBlanco = document.getElementById("rbBlanco");
+const buscador = document.getElementById("buscador");
+const contadorResultados = document.getElementById("contadorResultados");
 
-function saveSel(){sessionStorage.setItem("seleccion_voto",JSON.stringify(seleccion));}
-function loadSel(){try{return JSON.parse(sessionStorage.getItem("seleccion_voto")||"null");}catch{return null;}}
+// ==== Estado ====
+const circMap = { territorial: null, afro: null, indigena: null };
+const circNames = { territorial: "Territorial", afro: "Afrodescendiente", indigena: "Indígena" };
+let modalidadActual = "territorial";       // 'territorial' | 'afro' | 'indigena'
+let cod_cir = null;                        // cod_cir de la modalidad visible
+let partidosData = [];
+let filtro = "";
+let seleccion = null;
+const candidatosCache = new Map();         // clave: `${cod_cir}:${cod_partido}`
 
-(async function(){
-  const r=await fetch(`${API_URL}/circunscripciones?codigo_dane=${elector.codigo_dane}`);
-  const data=await r.json();
-  for(const c of data){
-    const n=c.nombre.toLowerCase();
-    if(n.includes("afro"))circMap.afro=c.cod_cir;
-    else if(n.includes("indig"))circMap.indigena=c.cod_cir;
-    else circMap.territorial=c.cod_cir;
-  }
-  cod_cir=circMap.territorial;
-  await cargarPartidos(cod_cir);
-  const prev=loadSel();if(prev){seleccion=prev;setSeleccion(prev);}
+// ==== Utilidades selección persistente ====
+function saveSel(sel){ if (sel) sessionStorage.setItem("seleccion_voto", JSON.stringify(sel)); }
+function loadSel(){ try { return JSON.parse(sessionStorage.getItem("seleccion_voto") || "null"); } catch { return null; } }
+
+// ==== Muestra horario ====
+(function(){
+  const f=new Date();
+  const dia=f.toLocaleDateString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric"});
+  document.getElementById("horarioJornada").textContent=`Desde ${dia}, 8:00 a.m. hasta ${dia}, 4:00 p.m.`;
 })();
 
-async function cargarPartidos(codCir){
-  const r=await fetch(`${API_URL}/partidos?codigo_dane=${elector.codigo_dane}&cod_cir=${codCir}`);
-  partidosData=await r.json();renderPartidos();
+// ==== Detección robusta de circunscripción por nombre ====
+function detectCircType(raw){
+  const n = (raw||"").normalize("NFD").replace(/\p{Diacritic}/gu,"").toLowerCase();
+  // Afrodescendiente
+  if (/\bafro|comunidades?\s+negras?|afrodesc/i.test(n)) return "afro";
+  // Indígena
+  if (/indigen/i.test(n)) return "indigena";
+  // Territorial/Ordinaria/General (sólo si está explícito)
+  if (/\bterritorial|ordinaria|general|nacional\b/i.test(n)) return "territorial";
+  return null; // no clasificar por descarte (evita mezclar)
 }
 
-async function getCandidatos(codPartido){
-  if(candidatosCache.has(codPartido))return candidatosCache.get(codPartido);
-  const r=await fetch(`${API_URL}/candidatos?codigo_dane=${elector.codigo_dane}&cod_cir=${cod_cir}&cod_partido=${codPartido}`);
-  const d=await r.json();candidatosCache.set(codPartido,d);return d;
+// ==== Cargar circunscripciones y fijar cod_cir de la vista ====
+async function cargarCircunscripciones(){
+  listaPartidos.innerHTML = "";
+  partidosData = [];
+  msgSel.textContent = "";
+
+  const res = await fetch(`${API_URL}/circunscripciones?codigo_dane=${elector.codigo_dane}`);
+  const data = await res.json();
+
+  // reset
+  circMap.territorial = circMap.afro = circMap.indigena = null;
+
+  for (const c of data) {
+    const t = detectCircType(c.nombre);
+    if (t && !circMap[t]) circMap[t] = c.cod_cir;
+  }
+
+  // modalidad actual desde radios
+  const rb = document.querySelector('input[name="modalidad"]:checked');
+  modalidadActual = rb ? rb.value : "territorial";
+  cod_cir = circMap[modalidadActual] || null;
+
+  document.querySelectorAll(".pill").forEach(p=>p.classList.remove("active"));
+  rb?.parentElement.classList.add("active");
+
+  if (!cod_cir) {
+    listaPartidos.innerHTML = `<div class="text-center text-secondary py-3">No hay partidos para esta modalidad.</div>`;
+    return;
+  }
+  await cargarPartidos(cod_cir);
+}
+
+// ==== Cargar partidos para un cod_cir (limpia caché de candidatos de otra circ) ====
+async function cargarPartidos(codCir){
+  listaPartidos.innerHTML = `<div class="text-center text-secondary py-3">Cargando partidos...</div>`;
+  // limpiar caché de otra circ
+  [...candidatosCache.keys()].forEach(k=>{ if(!k.startsWith(`${codCir}:`)) candidatosCache.delete(k); });
+
+  const res = await fetch(`${API_URL}/partidos?codigo_dane=${elector.codigo_dane}&cod_cir=${codCir}`);
+  const data = await res.json();
+  partidosData = Array.isArray(data) ? data : [];
+  await renderPartidos();
+}
+
+// ==== Obtener candidatos para (codCir, codPartido) ====
+async function getCandidatos(codCir, codPartido){
+  const key = `${codCir}:${codPartido}`;
+  if (candidatosCache.has(key)) return candidatosCache.get(key);
+  const res = await fetch(`${API_URL}/candidatos?codigo_dane=${elector.codigo_dane}&cod_cir=${codCir}&cod_partido=${codPartido}`);
+  if (res.status === 204) { candidatosCache.set(key, []); return []; }
+  const rows = await res.json();
+  const arr = Array.isArray(rows) ? rows : [];
+  candidatosCache.set(key, arr);
+  return arr;
+}
+
+// ==== Pintado resumen selección ====
+function setSeleccion(obj){
+  seleccion = { ...obj };    // {tipo, cod_cir, cod_partido?, num_lista?, nombre_partido?, nombre_candidato?}
+  saveSel(seleccion);
+
+  const circKey = Object.keys(circMap).find(k => circMap[k] === seleccion.cod_cir);
+  const circTxt = circNames[circKey] || "—";
+
+  let resumen = "—";
+  if (seleccion.tipo === "blanco") {
+    resumen = `Voto en blanco · Circ: ${circTxt}`;
+  } else if (seleccion.tipo === "partido") {
+    resumen = `${seleccion.nombre_partido || "Partido"} · Circ: ${circTxt}`;
+  } else if (seleccion.tipo === "candidato") {
+    const nom = seleccion.nombre_candidato || "";
+    const num = seleccion.num_lista ?? "—";
+    resumen = `${nom ? nom+" · " : ""}Tarjetón #${num} · ${seleccion.nombre_partido || "Partido"} · Circ: ${circTxt}`;
+  }
+  resumenSel.textContent = resumen;
+  btnVotar.disabled = !(chkDeclaracion.checked && seleccion);
 }
 
 function limpiarSeleccionVisual(){
-  document.querySelectorAll(".partido-card").forEach(e=>e.classList.remove("active"));
-  document.querySelectorAll(".chip").forEach(c=>{c.style.border="1px solid #d0d7e2";c.style.boxShadow="none";});
+  document.querySelectorAll(".partido-card").forEach(el=>el.classList.remove("active"));
+  document.querySelectorAll(".chip").forEach(ch=>{
+    ch.style.border="1px solid #d0d7e2";
+    ch.style.boxShadow="none";
+  });
 }
 
-function setSeleccion(obj){
-  seleccion={...obj};
-  const circTxt=Object.keys(circMap).find(k=>circMap[k]===seleccion.cod_cir);
-  let resumen="—";
-  if(seleccion.tipo==="blanco")resumen=`Voto en blanco · Circ: ${circNames[circTxt]||"—"}`;
-  else if(seleccion.tipo==="partido")resumen=`Partido ${seleccion.nombre_partido||""} · Circ: ${circNames[circTxt]||"—"}`;
-  else if(seleccion.tipo==="candidato")resumen=`${seleccion.nombre_candidato||""} · Tarjetón #${seleccion.num_lista} · ${seleccion.nombre_partido||""} · Circ: ${circNames[circTxt]||"—"}`;
-  resumenSel.textContent=resumen;
-  btnVotar.disabled=!(chkDeclaracion.checked&&seleccion);
-  saveSel();
-}
+// ==== Filtro de búsqueda ====
+buscador?.addEventListener("input", async ()=>{
+  filtro = buscador.value.trim().toLowerCase();
+  await renderPartidos();
+});
 
+// ==== Render de tarjetas de partidos ====
 async function renderPartidos(){
-  listaPartidos.innerHTML="";
-  const items=partidosData;
-  if(!items.length){listaPartidos.innerHTML=`<div class="text-center text-secondary py-3">No hay partidos para mostrar.</div>`;return;}
-  for(const p of items){
-    const tipo=(p.tipo_lista||"").toUpperCase();
-    const col=document.createElement("div");col.className="col-md-6";
-    col.innerHTML=`
+  listaPartidos.innerHTML = "";
+  let items = partidosData;
+  if (filtro) {
+    const out = [];
+    for (const p of items) {
+      const n = (p.nombre||"").toLowerCase();
+      let ok = n.includes(filtro);
+      if (!ok && (p.tipo_lista||"").toUpperCase()==="ABIERTA") {
+        const cands = await getCandidatos(cod_cir, p.cod_partido);
+        ok = cands.some(c => String(c.num_lista||"").includes(filtro) || (c.nombre||"").toLowerCase().includes(filtro));
+      }
+      if (ok) out.push(p);
+    }
+    items = out;
+  }
+
+  contadorResultados.textContent = filtro ? (items.length ? `${items.length} resultado(s)` : "Sin coincidencias") : "";
+
+  if (!items.length) {
+    listaPartidos.innerHTML = `<div class="text-center text-secondary py-3">No hay partidos para mostrar.</div>`;
+    return;
+  }
+
+  for (const p of items) {
+    const tipo = (p.tipo_lista||"").toUpperCase();
+    const col = document.createElement("div");
+    col.className = "col-md-6";
+    col.innerHTML = `
       <div class="partido-card p-3 border rounded mb-3" data-id="${p.cod_partido}">
         <div class="d-flex justify-content-between align-items-center">
-          <div><div class="fw-bold">${p.nombre}</div><div class="muted small">Lista ${tipo}</div></div>
-          <div><label class="form-check-label me-2 small">Votar por el partido</label><input type="radio" name="seleccion-partido" class="form-check-input"></div>
-        </div><div class="mt-3 candidatos-wrap"></div></div>`;
-    const card=col.querySelector(".partido-card");
-    const rbPartido=col.querySelector('input[name="seleccion-partido"]');
-    const candWrap=col.querySelector(".candidatos-wrap");
-    rbPartido.addEventListener("change",()=>{
-      limpiarSeleccionVisual();card.classList.add("active");rbBlanco.checked=false;
-      setSeleccion({tipo:"partido",cod_partido:p.cod_partido,nombre_partido:p.nombre,cod_cir:cod_cir});
-    });
-    if(tipo==="ABIERTA"){
-      const candidatos=await getCandidatos(p.cod_partido);
-      candWrap.innerHTML=candidatos.map(c=>`
-        <label class="candidate-chip"><input type="radio" name="sel-cand-${p.cod_partido}" class="d-none"
-        data-num="${c.num_lista}" data-id="${c.id_elector}" data-nombre="${c.nombre||""}">
-        <span class="chip">${c.num_lista}</span></label>`).join("");
-      candWrap.querySelectorAll("input").forEach(rb=>{
-        rb.addEventListener("change",()=>{
-          limpiarSeleccionVisual();card.classList.add("active");
-          rb.parentElement.querySelector(".chip").style.border="2px solid #0d6efd";
-          setSeleccion({tipo:"candidato",cod_partido:p.cod_partido,num_lista:Number(rb.dataset.num),
-            nombre_candidato:rb.dataset.nombre,nombre_partido:p.nombre,cod_cir:cod_cir});
-        });
+          <div>
+            <div class="fw-bold">${p.nombre}</div>
+            <div class="muted small">Lista ${tipo}</div>
+          </div>
+          <div>
+            <label class="form-check-label me-2 small">Votar por el partido</label>
+            <input type="radio" name="seleccion-partido" class="form-check-input">
+          </div>
+        </div>
+        <div class="mt-3 candidatos-wrap"></div>
+      </div>
+    `;
+
+    const card = col.querySelector(".partido-card");
+    const rbPartido = col.querySelector('input[name="seleccion-partido"]');
+    const candWrap = col.querySelector(".candidatos-wrap");
+
+    // Voto por el partido (siempre disponible)
+    rbPartido.addEventListener("change", ()=>{
+      limpiarSeleccionVisual();
+      card.classList.add("active");
+      rbBlanco.checked = false;
+      setSeleccion({
+        tipo: "partido",
+        cod_partido: p.cod_partido,
+        nombre_partido: p.nombre,
+        cod_cir: cod_cir          // circunscripción visible actual
       });
+      msgSel.textContent = "";
+    });
+
+    // Lista abierta → pintar candidatos
+    if (tipo === "ABIERTA") {
+      const candidatos = await getCandidatos(cod_cir, p.cod_partido);
+      if (!candidatos.length) {
+        candWrap.innerHTML = `<div class="text-muted small">Sin candidatos disponibles.</div>`;
+      } else {
+        candWrap.innerHTML = `
+          <div class="d-flex flex-wrap gap-2">
+            ${candidatos.map(c => `
+              <label class="candidate-chip" title="${c.nombre || ""}">
+                <input type="radio" name="sel-cand-${p.cod_partido}" class="d-none"
+                       data-id="${c.id_elector}" data-num="${c.num_lista}" data-nom="${c.nombre || ""}">
+                <span class="chip">${c.num_lista}</span>
+              </label>
+            `).join("")}
+          </div>
+        `;
+        candWrap.querySelectorAll('input[type="radio"]').forEach(rb=>{
+          rb.addEventListener("change", ()=>{
+            limpiarSeleccionVisual();
+            card.classList.add("active");
+            const chip = rb.parentElement.querySelector(".chip");
+            chip.style.border = "2px solid #0d6efd";
+            chip.style.boxShadow = "0 0 0 2px rgba(13,110,253,.25)";
+            rbBlanco.checked = false;
+            setSeleccion({
+              tipo: "candidato",
+              cod_partido: p.cod_partido,
+              num_lista: Number(rb.dataset.num),
+              nombre_candidato: rb.dataset.nom || "",
+              nombre_partido: p.nombre,
+              cod_cir: cod_cir        // circunscripción visible actual
+            });
+            msgSel.textContent = "";
+          });
+        });
+      }
     }
+
     listaPartidos.appendChild(col);
   }
 }
 
-rbBlanco.addEventListener("change",()=>{if(rbBlanco.checked){limpiarSeleccionVisual();setSeleccion({tipo:"blanco",cod_cir:cod_cir});}});
-
-chkDeclaracion.addEventListener("change",()=>{btnVotar.disabled=!(chkDeclaracion.checked&&seleccion);});
-
-btnVotar.addEventListener("click",async()=>{
-  if(!seleccion){msgSel.textContent="Seleccione una opción.";return;}
-  const body={
-    id_elector:elector.id_elector,
-    codigo_dane:elector.codigo_dane,
-    cod_cir:seleccion.cod_cir,
-    cod_partido:(seleccion.tipo!=="blanco")?seleccion.cod_partido:null,
-    num_lista:(seleccion.tipo==="candidato")?seleccion.num_lista:null,
-    voto_blanco:(seleccion.tipo==="blanco")
-  };
-  const r=await fetch(`${API_URL}/votar`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-  if(r.ok){alert("✅ Voto registrado exitosamente.");window.location="/";}else msgSel.textContent="Error al registrar voto.";
+// ==== Voto en blanco ====
+rbBlanco?.addEventListener("change", ()=>{
+  if (rbBlanco.checked) {
+    limpiarSeleccionVisual();
+    setSeleccion({ tipo: "blanco", cod_cir });
+    msgSel.textContent = "";
+  }
 });
 
+// ==== Habilitar botón con declaración ====
+chkDeclaracion?.addEventListener("change", ()=>{
+  btnVotar.disabled = !(chkDeclaracion.checked && seleccion);
+});
+
+// ==== Confirmar voto (envía SIEMPRE la circunscripción de la selección) ====
+btnVotar?.addEventListener("click", async ()=>{
+  if (!seleccion) { msgSel.textContent = "Seleccione un partido, candidato o voto en blanco."; return; }
+  if (!chkDeclaracion.checked) { msgSel.textContent = "Debe aceptar la declaración."; return; }
+
+  const payload = {
+    id_elector: elector.id_elector,
+    codigo_dane: elector.codigo_dane,
+    cod_cir: seleccion.cod_cir,
+    cod_partido: (seleccion.tipo !== "blanco") ? seleccion.cod_partido : null,
+    num_lista: (seleccion.tipo === "candidato") ? seleccion.num_lista : null,
+    voto_blanco: (seleccion.tipo === "blanco")
+  };
+
+  try{
+    const res = await fetch(`${API_URL}/votar`, {
+      method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload)
+    });
+    if (res.ok) { alert("✅ Voto registrado exitosamente."); window.location.href="/"; }
+    else {
+      const data = await res.json().catch(()=>({}));
+      msgSel.textContent = data.message || "Error al registrar voto.";
+    }
+  }catch(e){
+    console.error(e); msgSel.textContent = "Error en la conexión con el servidor.";
+  }
+});
+
+// ==== Cambio de modalidad ====
 document.querySelectorAll('input[name="modalidad"]').forEach(rb=>{
-  rb.addEventListener("change",async()=>{
+  rb.addEventListener("change", async ()=>{
     document.querySelectorAll(".pill").forEach(p=>p.classList.remove("active"));
     rb.parentElement.classList.add("active");
-    const val=rb.value;cod_cir=val==="afro"?circMap.afro:val==="indigena"?circMap.indigena:circMap.territorial;
+    modalidadActual = rb.value;
+    cod_cir = circMap[modalidadActual] || null;
+    filtro = "";
+    if (buscador) buscador.value = "";
+    candidatosCache.clear();         // evita mezclar candidatos de otra circ
+    if (!cod_cir) {
+      listaPartidos.innerHTML = `<div class="text-center text-secondary py-3">No hay partidos para esta modalidad.</div>`;
+      return;
+    }
     await cargarPartidos(cod_cir);
-    const selPrev=loadSel();if(selPrev&&selPrev.cod_cir===cod_cir){seleccion=selPrev;setSeleccion(selPrev);}
+
+    // Si la selección previa coincide con esta circ, la re-pinto en el resumen
+    const prev = loadSel();
+    if (prev && prev.cod_cir === cod_cir) setSeleccion(prev);
+    else btnVotar.disabled = !(chkDeclaracion.checked && seleccion);
   });
 });
+
+// ==== Inicio ====
+(async ()=>{
+  await cargarCircunscripciones();
+  // Pintar selección previa (aunque sea de otra circ); no interfiere con render
+  const prev = loadSel();
+  if (prev) setSeleccion(prev);
+})();
 </script>
 </body>
 </html>

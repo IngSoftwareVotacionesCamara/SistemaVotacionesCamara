@@ -23,134 +23,125 @@
     .help{font-size:.95rem}
     .badge-status{font-size:.9rem}
     .disabledish{opacity:.65;pointer-events:none}
-    .partido-card.active {
-      border-color: #0d6efd !important;
-      box-shadow: 0 0 0 2px rgba(13,110,253,.15);
-    }
+    .partido-card.active { border-color:#0d6efd !important; box-shadow:0 0 0 2px rgba(13,110,253,.15); }
     .candidate-chip .chip {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 42px;
-      height: 42px;
-      border-radius: 50%;
-      border: 1px solid #d0d7e2;
-      font-weight: 600;
-      user-select: none;
-      cursor: pointer;
+      display:inline-flex;align-items:center;justify-content:center;
+      width:42px;height:42px;border-radius:50%;border:1px solid #d0d7e2;
+      font-weight:600;user-select:none;cursor:pointer;
     }
-</style>
+  </style>
 </head>
 <body>
 
-  <!-- Encabezado institucional -->
-  <div class="header">
-    <div class="d-flex align-items-center gap-3">
-      <img src="img/logo_cne.png" alt="CNE" />
-      <div class="lh-sm">
-        <div style="font-size:.95rem">República de Colombia</div>
-        <div class="fw-bold">Sistema de Votación a Cámara de Representantes</div>
-      </div>
+<!-- Encabezado institucional -->
+<div class="header">
+  <div class="d-flex align-items-center gap-3">
+    <img src="img/logo_cne.png" alt="CNE" />
+    <div class="lh-sm">
+      <div style="font-size:.95rem">República de Colombia</div>
+      <div class="fw-bold">Sistema de Votación a Cámara de Representantes</div>
     </div>
-    <div class="fw-semibold">Votaciones</div>
+  </div>
+  <div class="fw-semibold">Votaciones</div>
+</div>
+
+<div class="container card-wrap">
+  <!-- Estado -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="fw-semibold">Estado de la jornada:
+      <span class="badge bg-success badge-status">Abierta</span>
+    </div>
+    <div id="horarioJornada" class="text-muted small"></div>
   </div>
 
-  <div class="container card-wrap">
-    <!-- Estado -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <div class="fw-semibold">Estado de la jornada:
-        <span class="badge bg-success badge-status">Abierta</span>
-      </div>
-      <div id="horarioJornada" class="text-muted small"></div>
-    </div>
-
-    <!-- Bloque 1: Identificación del votante -->
-    <div class="card mb-3">
-      <div class="card-body">
-        <h5 class="card-title mb-3">Identificación del votante</h5>
-        <div class="row g-2">
-          <div class="col-md-6">
-            <label class="form-label">Tipo de identificación</label>
-            <input id="tipoIdent" class="form-control" disabled value="CC – Cédula de ciudadanía">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Número de identificación</label>
-            <input id="numIdent" class="form-control" disabled>
-          </div>
+  <!-- Bloque 1: Identificación del votante -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title mb-3">Identificación del votante</h5>
+      <div class="row g-2">
+        <div class="col-md-6">
+          <label class="form-label">Tipo de identificación</label>
+          <input id="tipoIdent" class="form-control" disabled value="CC – Cédula de ciudadanía">
         </div>
-      </div>
-    </div>
-
-    <!-- Bloque 2: Modalidad -->
-    <div class="card mb-3">
-      <div class="card-body">
-        <h5 class="card-title mb-3">Modalidad de voto</h5>
-        <div id="modGroup" class="d-flex flex-wrap gap-2">
-          <label class="pill" id="pill-territorial">
-            <input type="radio" name="modalidad" value="territorial" class="form-check-input me-1" checked>
-            Territorial
-          </label>
-          <label class="pill" id="pill-afro">
-            <input type="radio" name="modalidad" value="afro" class="form-check-input me-1">
-            Afrodescendiente
-          </label>
-          <label class="pill" id="pill-indigena">
-            <input type="radio" name="modalidad" value="indigena" class="form-check-input me-1">
-            Indígena
-          </label>
+        <div class="col-md-6">
+          <label class="form-label">Número de identificación</label>
+          <input id="numIdent" class="form-control" disabled>
         </div>
-      </div>
-    </div>
-
-    <!-- Bloque 3: Selección -->
-    <div class="card mb-3">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <div>
-            <div class="question mb-0">¿Por cuál desea votar?</div>
-            <div class="help muted">Seleccione un partido o elija voto en blanco</div>
-          </div>
-
-          <div class="d-flex align-items-center gap-2">
-            <input id="buscador"
-                   class="form-control form-control-sm"
-                   style="width:260px"
-                   placeholder="Buscar partido o candidato..." />
-            <small id="contadorResultados" class="text-muted"></small>
-          </div>
-        </div>
-
-        <!-- Voto en blanco -->
-        <div class="blank-card my-3" id="cardBlanco">
-          <div>
-            <strong>Voto en blanco</strong>
-            <div class="muted small">Seleccione para votar en blanco en esta circunscripción</div>
-          </div>
-          <input type="radio" name="partido" value="BLANCO" class="form-check-input" id="rbBlanco">
-        </div>
-
-        <!-- Lista de partidos -->
-        <div id="listaPartidos" class="row g-3"></div>
-        <div id="msgSel" class="text-danger mt-2"></div>
-      </div>
-    </div>
-
-    <!-- Bloque 4: Confirmación -->
-    <div class="card">
-      <div class="card-body">
-        <h5 class="card-title mb-3">Confirmación</h5>
-        <div class="mb-2"><strong>Su selección:</strong> <span id="resumenSel" class="muted">—</span></div>
-        <div class="form-check mb-3">
-          <input class="form-check-input" type="checkbox" id="chkDeclaracion">
-          <label class="form-check-label" for="chkDeclaracion">
-            Declaro que mi voto es personal y secreto.
-          </label>
-        </div>
-        <button id="btnVotar" class="btn btn-primary px-4" disabled>Confirmar voto</button>
-        <div id="msg" class="mt-3"></div>
       </div>
     </div>
   </div>
+
+  <!-- Bloque 2: Modalidad -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title mb-3">Modalidad de voto</h5>
+      <div id="modGroup" class="d-flex flex-wrap gap-2">
+        <label class="pill" id="pill-territorial">
+          <input type="radio" name="modalidad" value="territorial" class="form-check-input me-1" checked>
+          Territorial
+        </label>
+        <label class="pill" id="pill-afro">
+          <input type="radio" name="modalidad" value="afro" class="form-check-input me-1">
+          Afrodescendiente
+        </label>
+        <label class="pill" id="pill-indigena">
+          <input type="radio" name="modalidad" value="indigena" class="form-check-input me-1">
+          Indígena
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bloque 3: Selección -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div>
+          <div class="question mb-0">¿Por cuál desea votar?</div>
+          <div class="help muted">Seleccione un partido o elija voto en blanco</div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+          <input id="buscador"
+                 class="form-control form-control-sm"
+                 style="width:260px"
+                 placeholder="Buscar partido o candidato..." />
+          <small id="contadorResultados" class="text-muted"></small>
+        </div>
+      </div>
+
+      <!-- Voto en blanco -->
+      <div class="blank-card my-3" id="cardBlanco">
+        <div>
+          <strong>Voto en blanco</strong>
+          <div class="muted small">Seleccione para votar en blanco en esta circunscripción</div>
+        </div>
+        <input type="radio" name="partido" value="BLANCO" class="form-check-input" id="rbBlanco">
+      </div>
+
+      <!-- Lista de partidos -->
+      <div id="listaPartidos" class="row g-3"></div>
+      <div id="msgSel" class="text-danger mt-2"></div>
+    </div>
+  </div>
+
+  <!-- Bloque 4: Confirmación -->
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title mb-3">Confirmación</h5>
+      <div class="mb-2"><strong>Su selección:</strong> <span id="resumenSel" class="muted">—</span></div>
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="chkDeclaracion">
+        <label class="form-check-label" for="chkDeclaracion">
+          Declaro que mi voto es personal y secreto.
+        </label>
+      </div>
+      <button id="btnVotar" class="btn btn-primary px-4" disabled>Confirmar voto</button>
+      <div id="msg" class="mt-3"></div>
+    </div>
+  </div>
+</div>
+
 <script>
   const API_URL = "/api";
 
@@ -160,7 +151,7 @@
     elector = JSON.parse(sessionStorage.getItem("elector") || "null");
   } catch { elector = null; }
 
-  // 🔧 Si sessionStorage viene vacío, intenta recuperarlo desde localStorage
+  // Si sessionStorage viene vacío, intenta un respaldo en localStorage
   if (!elector || !elector.id_elector) {
     try {
       const backup = JSON.parse(localStorage.getItem("elector_backup") || "null");
@@ -194,6 +185,15 @@
   let seleccion = null;
   let filtro = "";
 
+  // Devuelve el texto de la circunscripción actual según el radio seleccionado
+  function getCircLabel() {
+    const rb = document.querySelector('input[name="modalidad"]:checked');
+    if (!rb) return "—";
+    if (rb.value === "afro") return "Afrodescendiente";
+    if (rb.value === "indigena") return "Indígena";
+    return "Territorial";
+  }
+
   // === 3) Mostrar horario de jornada ===
   (function pintarHorario(){
     const fecha = new Date();
@@ -206,7 +206,7 @@
   // === 4) Pintar identificación ===
   document.getElementById("numIdent").value = elector.id_elector ?? "";
 
- // === 5) Cargar circunscripciones ===
+  // === 5) Cargar circunscripciones ===
   const circMap = { territorial: null, afro: null, indigena: null };
 
   async function cargarCircunscripciones() {
@@ -217,7 +217,6 @@
       const res = await fetch(`${API_URL}/circunscripciones?codigo_dane=${elector.codigo_dane}`);
       const data = await res.json();
 
-      // Normaliza texto y mapea con reglas explícitas (sin sobre-escribir si ya está seteado)
       const norm = s => (s || "")
         .normalize("NFD").replace(/\p{Diacritic}/gu, "")
         .toLowerCase().trim();
@@ -229,34 +228,29 @@
       for (const c of data) {
         const n = norm(c.nombre);
         if (!circMap.afro && (n.includes("afro") || n.includes("comunidades negras"))) {
-          circMap.afro = c.cod_cir;
-          continue;
+          circMap.afro = c.cod_cir; continue;
         }
         if (!circMap.indigena && (n.includes("indigena") || n.includes("indígena"))) {
-          circMap.indigena = c.cod_cir;
-          continue;
+          circMap.indigena = c.cod_cir; continue;
         }
-        // Territorial / Ordinaria / General
         if (!circMap.territorial && (n.includes("territorial") || n.includes("ordinaria") || n.includes("general"))) {
           circMap.territorial = c.cod_cir;
         }
       }
 
-      // Si aún no se detectó "territorial", toma la que NO sea afro ni indígena y deja log
       if (!circMap.territorial) {
         const resto = data.find(c => {
           const n = norm(c.nombre);
           return !n.includes("afro") && !n.includes("indigena") && !n.includes("indígena");
         });
         if (resto) circMap.territorial = resto.cod_cir;
-        console.log("⚠️ circMap.territorial fijada por descarte:", circMap.territorial);
+        console.log("⚠️ circMap.territorial por descarte:", circMap.territorial);
       }
 
-      // circunscripción según el radio seleccionado (sin fallbacks cruzados)
+      // circunscripción según el radio seleccionado
       const sel = document.querySelector('input[name="modalidad"]:checked')?.value || "territorial";
       cod_cir = sel === "afro" ? circMap.afro : sel === "indigena" ? circMap.indigena : circMap.territorial;
 
-      // Marca visual
       document.getElementById("pill-territorial")?.classList.toggle("active", sel === "territorial");
       document.getElementById("pill-afro")?.classList.toggle("active", sel === "afro");
       document.getElementById("pill-indigena")?.classList.toggle("active", sel === "indigena");
@@ -297,10 +291,7 @@
   async function getCandidatos(cod_partido) {
     if (candidatosCache.has(cod_partido)) return candidatosCache.get(cod_partido);
     const res = await fetch(`${API_URL}/candidatos?codigo_dane=${elector.codigo_dane}&cod_cir=${cod_cir}&cod_partido=${cod_partido}`);
-    if (res.status === 204) {
-      candidatosCache.set(cod_partido, []);
-      return [];
-    }
+    if (res.status === 204) { candidatosCache.set(cod_partido, []); return []; }
     const data = await res.json();
     const rows = Array.isArray(data) ? data : [];
     candidatosCache.set(cod_partido, rows);
@@ -316,16 +307,32 @@
   }
 
   function setSeleccion(obj) {
+    // obj puede incluir: { tipo, cod_partido?, num_lista?, id_elector?, nombre_cand?, nombre_partido? }
     seleccion = obj;
+
+    const circ = getCircLabel();
+
     if (seleccion?.tipo === "blanco") {
-      resumenSel.textContent = "Voto en blanco";
+      resumenSel.textContent = `Voto en blanco · Circ: ${circ}`;
     } else if (seleccion?.tipo === "partido") {
-      resumenSel.textContent = "Partido seleccionado";
+      // nombre del partido: si vino en obj úsalo, si no búscalo en partidosData
+      const pNombre = seleccion.nombre_partido ||
+        (partidosData.find(x => x.cod_partido === seleccion.cod_partido)?.nombre || "Partido");
+      resumenSel.textContent = `${pNombre} (lista) · Circ: ${circ}`;
     } else if (seleccion?.tipo === "candidato") {
-      resumenSel.textContent = `Candidato #${seleccion.num_lista}`;
+      const pNombre = seleccion.nombre_partido ||
+        (partidosData.find(x => x.cod_partido === seleccion.cod_partido)?.nombre || "Partido");
+      const num = seleccion.num_lista ?? "—";
+      const nom = seleccion.nombre_cand || ""; // si lo enviamos desde la selección
+      // Si no tenemos nombre, se muestra solo el número
+      resumenSel.textContent = nom
+        ? `${pNombre} · Tarjetón #${num} · ${nom} · Circ: ${circ}`
+        : `${pNombre} · Tarjetón #${num} · Circ: ${circ}`;
     } else {
       resumenSel.textContent = "—";
     }
+
+    // Habilitar/Deshabilitar Confirmar
     btnVotar.disabled = !(chkDeclaracion.checked && seleccion);
   }
 
@@ -370,28 +377,36 @@
               <div class="muted small">Lista ${tipo}</div>
             </div>
             <div>
-              <input type="radio" name="seleccion-partido" class="form-check-input" ${tipo==="ABIERTA" ? "disabled" : ""}>
+              <label class="form-check-label me-2 small">Votar por el partido</label>
+              <input type="radio" name="seleccion-partido" class="form-check-input">
             </div>
           </div>
           <div class="mt-3 candidatos-wrap"></div>
         </div>
       `;
+
       const card = col.querySelector(".partido-card");
       const rbPartido = col.querySelector('input[type="radio"][name="seleccion-partido"]');
       const candWrap = col.querySelector(".candidatos-wrap");
 
-      // Lista cerrada
-      if (tipo !== "ABIERTA") {
-        rbPartido.addEventListener("change", () => {
-          limpiarSeleccionVisual();
-          card.classList.add("active");
-          rbBlanco.checked = false;
-          setSeleccion({ tipo: "partido", cod_partido: p.cod_partido });
-          msgSel.textContent = "";
-        });
-      }
+      // 👉 Siempre permitir votar por el partido (ABIERTA o CERRADA)
+      rbPartido.addEventListener("change", () => {
+        limpiarSeleccionVisual();
+        card.classList.add("active");
+        rbBlanco.checked = false;
 
-      // Lista abierta
+        // Si hay candidatos pintados, al elegir el partido se desmarcan
+        candWrap.querySelectorAll('input[name="seleccion-candidato"]').forEach(rb => { rb.checked = false; });
+
+        setSeleccion({
+          tipo: "partido",
+          cod_partido: p.cod_partido,
+          nombre_partido: p.nombre
+        });
+        msgSel.textContent = "";
+      });
+
+      // Si es ABIERTA → renderizamos chips de candidatos
       if (tipo === "ABIERTA") {
         const candidatos = await getCandidatos(p.cod_partido);
         if (!candidatos.length) {
@@ -415,18 +430,25 @@
               const chip = rb.parentElement.querySelector(".chip");
               chip.style.border = "2px solid #0d6efd";
               chip.style.boxShadow = "0 0 0 2px rgba(13,110,253,.25)";
+
               rbBlanco.checked = false;
+              // Al elegir candidato, desmarcar el radio de "votar por el partido" de esta tarjeta
+              rbPartido.checked = false;
+
               setSeleccion({
                 tipo: "candidato",
                 cod_partido: Number(rb.dataset.cod),
                 id_elector: Number(rb.dataset.id),
-                num_lista: Number(rb.dataset.num)
+                num_lista: Number(rb.dataset.num),
+                nombre_cand: rb.parentElement.getAttribute("title") || "", // viene del title con el nombre
+                nombre_partido: p.nombre
               });
               msgSel.textContent = "";
             });
           });
         }
       }
+
       listaPartidos.appendChild(col);
     }
   }
@@ -480,7 +502,7 @@
     }
   });
 
-    // === 10) Cambiar de modalidad ===
+  // === 10) Cambiar de modalidad ===
   document.querySelectorAll('input[name="modalidad"]').forEach(rb => {
     rb.addEventListener("change", async () => {
       document.querySelectorAll(".pill").forEach(p => p.classList.remove("active"));
@@ -502,7 +524,6 @@
       await cargarPartidos(cod_cir);
     });
   });
-
 
   // === 11) Iniciar ===
   cargarCircunscripciones();

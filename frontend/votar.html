@@ -19,21 +19,15 @@
     .partido-card.active{border-color:#0d6efd;background:#e7f1ff}
     .blank-card{border:2px dashed #d5dced;border-radius:12px;padding:14px;background:#fcfdff;display:flex;align-items:center;justify-content:space-between}
     .muted{color:#6b778c}
-    .question{font-size:1.25rem;font-weight:700;margin-bottom:6px}
-    .help{font-size:.95rem}
-    .badge-status{font-size:.9rem}
-    .disabledish{opacity:.65;pointer-events:none}
-    .partido-card.active { border-color:#0d6efd !important; box-shadow:0 0 0 2px rgba(13,110,253,.15); }
-    .candidate-chip .chip {
+    .candidate-chip .chip{
       display:inline-flex;align-items:center;justify-content:center;
       width:42px;height:42px;border-radius:50%;border:1px solid #d0d7e2;
-      font-weight:600;user-select:none;cursor:pointer;
+      font-weight:600;cursor:pointer;user-select:none;
     }
   </style>
 </head>
 <body>
 
-<!-- Encabezado institucional -->
 <div class="header">
   <div class="d-flex align-items-center gap-3">
     <img src="img/logo_cne.png" alt="CNE" />
@@ -46,22 +40,19 @@
 </div>
 
 <div class="container card-wrap">
-  <!-- Estado -->
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <div class="fw-semibold">Estado de la jornada:
-      <span class="badge bg-success badge-status">Abierta</span>
-    </div>
+    <div class="fw-semibold">Estado de la jornada: <span class="badge bg-success">Abierta</span></div>
     <div id="horarioJornada" class="text-muted small"></div>
   </div>
 
-  <!-- Bloque 1: Identificación del votante -->
+  <!-- Identificación -->
   <div class="card mb-3">
     <div class="card-body">
       <h5 class="card-title mb-3">Identificación del votante</h5>
       <div class="row g-2">
         <div class="col-md-6">
           <label class="form-label">Tipo de identificación</label>
-          <input id="tipoIdent" class="form-control" disabled value="CC – Cédula de ciudadanía">
+          <input class="form-control" disabled value="CC – Cédula de ciudadanía">
         </div>
         <div class="col-md-6">
           <label class="form-label">Número de identificación</label>
@@ -71,491 +62,188 @@
     </div>
   </div>
 
-  <!-- Bloque 2: Modalidad -->
+  <!-- Modalidad -->
   <div class="card mb-3">
     <div class="card-body">
       <h5 class="card-title mb-3">Modalidad de voto</h5>
       <div id="modGroup" class="d-flex flex-wrap gap-2">
-        <label class="pill" id="pill-territorial">
-          <input type="radio" name="modalidad" value="territorial" class="form-check-input me-1" checked>
-          Territorial
-        </label>
-        <label class="pill" id="pill-afro">
-          <input type="radio" name="modalidad" value="afro" class="form-check-input me-1">
-          Afrodescendiente
-        </label>
-        <label class="pill" id="pill-indigena">
-          <input type="radio" name="modalidad" value="indigena" class="form-check-input me-1">
-          Indígena
-        </label>
+        <label class="pill active"><input type="radio" name="modalidad" value="territorial" checked>Territorial</label>
+        <label class="pill"><input type="radio" name="modalidad" value="afro">Afrodescendiente</label>
+        <label class="pill"><input type="radio" name="modalidad" value="indigena">Indígena</label>
       </div>
     </div>
   </div>
 
-  <!-- Bloque 3: Selección -->
+  <!-- Selección -->
   <div class="card mb-3">
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <div>
-          <div class="question mb-0">¿Por cuál desea votar?</div>
-          <div class="help muted">Seleccione un partido o elija voto en blanco</div>
+          <div class="fw-bold fs-5">¿Por cuál desea votar?</div>
+          <div class="muted small">Seleccione un partido o elija voto en blanco</div>
         </div>
-
         <div class="d-flex align-items-center gap-2">
-          <input id="buscador"
-                 class="form-control form-control-sm"
-                 style="width:260px"
-                 placeholder="Buscar partido o candidato..." />
+          <input id="buscador" class="form-control form-control-sm" style="width:260px" placeholder="Buscar partido o candidato...">
           <small id="contadorResultados" class="text-muted"></small>
         </div>
       </div>
 
-      <!-- Voto en blanco -->
-      <div class="blank-card my-3" id="cardBlanco">
-        <div>
-          <strong>Voto en blanco</strong>
-          <div class="muted small">Seleccione para votar en blanco en esta circunscripción</div>
-        </div>
-        <input type="radio" name="partido" value="BLANCO" class="form-check-input" id="rbBlanco">
+      <div class="blank-card my-3">
+        <div><strong>Voto en blanco</strong><div class="muted small">Seleccione para votar en blanco</div></div>
+        <input id="rbBlanco" type="radio" name="partido" class="form-check-input">
       </div>
 
-      <!-- Lista de partidos -->
       <div id="listaPartidos" class="row g-3"></div>
       <div id="msgSel" class="text-danger mt-2"></div>
     </div>
   </div>
 
-  <!-- Bloque 4: Confirmación -->
+  <!-- Confirmación -->
   <div class="card">
     <div class="card-body">
       <h5 class="card-title mb-3">Confirmación</h5>
       <div class="mb-2"><strong>Su selección:</strong> <span id="resumenSel" class="muted">—</span></div>
       <div class="form-check mb-3">
-        <input class="form-check-input" type="checkbox" id="chkDeclaracion">
-        <label class="form-check-label" for="chkDeclaracion">
-          Declaro que mi voto es personal y secreto.
-        </label>
+        <input id="chkDeclaracion" class="form-check-input" type="checkbox">
+        <label for="chkDeclaracion" class="form-check-label">Declaro que mi voto es personal y secreto.</label>
       </div>
       <button id="btnVotar" class="btn btn-primary px-4" disabled>Confirmar voto</button>
-      <div id="msg" class="mt-3"></div>
     </div>
   </div>
 </div>
 
 <script>
-  const API_URL = "/api";
+const API_URL="/api";
+let elector=null;
+try{elector=JSON.parse(sessionStorage.getItem("elector")||"null");}catch{}
+if(!elector||!elector.id_elector){window.location="/";}
+document.getElementById("numIdent").value=elector.id_elector;
 
-  // === 0) Cargar o recuperar elector desde sesión ===
-  let elector = null;
-  try {
-    elector = JSON.parse(sessionStorage.getItem("elector") || "null");
-  } catch { elector = null; }
+const msgSel=document.getElementById("msgSel");
+const listaPartidos=document.getElementById("listaPartidos");
+const resumenSel=document.getElementById("resumenSel");
+const btnVotar=document.getElementById("btnVotar");
+const chkDeclaracion=document.getElementById("chkDeclaracion");
+const rbBlanco=document.getElementById("rbBlanco");
+const buscador=document.getElementById("buscador");
+const contadorResultados=document.getElementById("contadorResultados");
 
-  // Si sessionStorage viene vacío, intenta un respaldo en localStorage
-  if (!elector || !elector.id_elector) {
-    try {
-      const backup = JSON.parse(localStorage.getItem("elector_backup") || "null");
-      if (backup && backup.id_elector) {
-        sessionStorage.setItem("elector", JSON.stringify(backup));
-        elector = backup;
-      }
-    } catch {}
+let cod_cir=null,partidosData=[],filtro="",seleccion=null;
+const candidatosCache=new Map();
+const circMap={territorial:null,afro:null,indigena:null};
+const circNames={territorial:"Territorial",afro:"Afrodescendiente",indigena:"Indígena"};
+
+function saveSel(){sessionStorage.setItem("seleccion_voto",JSON.stringify(seleccion));}
+function loadSel(){try{return JSON.parse(sessionStorage.getItem("seleccion_voto")||"null");}catch{return null;}}
+
+(async function(){
+  const r=await fetch(`${API_URL}/circunscripciones?codigo_dane=${elector.codigo_dane}`);
+  const data=await r.json();
+  for(const c of data){
+    const n=c.nombre.toLowerCase();
+    if(n.includes("afro"))circMap.afro=c.cod_cir;
+    else if(n.includes("indig"))circMap.indigena=c.cod_cir;
+    else circMap.territorial=c.cod_cir;
   }
+  cod_cir=circMap.territorial;
+  await cargarPartidos(cod_cir);
+  const prev=loadSel();if(prev){seleccion=prev;setSeleccion(prev);}
+})();
 
-  // Si aún no hay sesión válida → volver al login
-  if (!elector || !elector.id_elector) {
-    window.location.assign("/");
-  }
+async function cargarPartidos(codCir){
+  const r=await fetch(`${API_URL}/partidos?codigo_dane=${elector.codigo_dane}&cod_cir=${codCir}`);
+  partidosData=await r.json();renderPartidos();
+}
 
-  // === 1) Referencias DOM ===
-  const msg         = document.getElementById("msg");
-  const msgSel      = document.getElementById("msgSel");
-  const rbBlanco    = document.getElementById("rbBlanco");
-  const listaPartidos = document.getElementById("listaPartidos");
-  const resumenSel  = document.getElementById("resumenSel");
-  const btnVotar    = document.getElementById("btnVotar");
-  const chkDeclaracion = document.getElementById("chkDeclaracion");
-  const buscador    = document.getElementById("buscador");
-  const contadorResultados = document.getElementById("contadorResultados");
+async function getCandidatos(codPartido){
+  if(candidatosCache.has(codPartido))return candidatosCache.get(codPartido);
+  const r=await fetch(`${API_URL}/candidatos?codigo_dane=${elector.codigo_dane}&cod_cir=${cod_cir}&cod_partido=${codPartido}`);
+  const d=await r.json();candidatosCache.set(codPartido,d);return d;
+}
 
-  // === 2) Estado global ===
-  let cod_cir = null;
-  let partidosData = [];
-  const candidatosCache = new Map();
-  let seleccion = null;
-  let filtro = "";
-  // Carga selección previa si existía
-   // Carga selección previa si existía
-  const seleccionGuardada = loadSeleccionGlobal();
-  if (seleccionGuardada) {
-    seleccion = seleccionGuardada;
-    // pinta el resumen aunque todavía no hayas cargado partidos
-    if (typeof setSeleccion === "function") {
-      // evita que deshabilite el botón por no estar en la misma circ (lo haremos luego)
-      const prev = seleccion;
-      seleccion = null;
-      setSeleccion(prev);
-    }
-  }
+function limpiarSeleccionVisual(){
+  document.querySelectorAll(".partido-card").forEach(e=>e.classList.remove("active"));
+  document.querySelectorAll(".chip").forEach(c=>{c.style.border="1px solid #d0d7e2";c.style.boxShadow="none";});
+}
 
-  // Devuelve el texto de la circunscripción actual según el radio seleccionado
-  function getCircLabel() {
-    const rb = document.querySelector('input[name="modalidad"]:checked');
-    if (!rb) return "—";
-    if (rb.value === "afro") return "Afrodescendiente";
-    if (rb.value === "indigena") return "Indígena";
-    return "Territorial";
-  }
+function setSeleccion(obj){
+  seleccion={...obj};
+  const circTxt=Object.keys(circMap).find(k=>circMap[k]===seleccion.cod_cir);
+  let resumen="—";
+  if(seleccion.tipo==="blanco")resumen=`Voto en blanco · Circ: ${circNames[circTxt]||"—"}`;
+  else if(seleccion.tipo==="partido")resumen=`Partido ${seleccion.nombre_partido||""} · Circ: ${circNames[circTxt]||"—"}`;
+  else if(seleccion.tipo==="candidato")resumen=`${seleccion.nombre_candidato||""} · Tarjetón #${seleccion.num_lista} · ${seleccion.nombre_partido||""} · Circ: ${circNames[circTxt]||"—"}`;
+  resumenSel.textContent=resumen;
+  btnVotar.disabled=!(chkDeclaracion.checked&&seleccion);
+  saveSel();
+}
 
-  function loadSeleccionGlobal() {
-    try { return JSON.parse(sessionStorage.getItem("seleccion_global") || "null"); }
-    catch { return null; }
-  }
-  function saveSeleccionGlobal(sel) {
-    if (sel) sessionStorage.setItem("seleccion_global", JSON.stringify(sel));
-    else sessionStorage.removeItem("seleccion_global");
-  }
-
-  // === 3) Mostrar horario de jornada ===
-  (function pintarHorario(){
-    const fecha = new Date();
-    const fmt = { day: "2-digit", month: "2-digit", year: "numeric" };
-    const dia = fecha.toLocaleDateString("es-CO", fmt);
-    document.getElementById("horarioJornada").textContent =
-      `Desde ${dia}, 8:00 a.m. hasta ${dia}, 4:00 p.m.`;
-  })();
-
-  // === 4) Pintar identificación ===
-  document.getElementById("numIdent").value = elector.id_elector ?? "";
-
-  // === 5) Cargar circunscripciones ===
-  const circMap = { territorial: null, afro: null, indigena: null };
-
-  async function cargarCircunscripciones() {
-    try {
-      msgSel.textContent = "";
-      listaPartidos.innerHTML = "";
-
-      const res = await fetch(`${API_URL}/circunscripciones?codigo_dane=${elector.codigo_dane}`);
-      const data = await res.json();
-
-      const norm = s => (s || "")
-        .normalize("NFD").replace(/\p{Diacritic}/gu, "")
-        .toLowerCase().trim();
-
-      circMap.territorial = null;
-      circMap.afro        = null;
-      circMap.indigena    = null;
-
-      for (const c of data) {
-        const n = norm(c.nombre);
-        if (!circMap.afro && (n.includes("afro") || n.includes("comunidades negras"))) {
-          circMap.afro = c.cod_cir; continue;
-        }
-        if (!circMap.indigena && (n.includes("indigena") || n.includes("indígena"))) {
-          circMap.indigena = c.cod_cir; continue;
-        }
-        if (!circMap.territorial && (n.includes("territorial") || n.includes("ordinaria") || n.includes("general"))) {
-          circMap.territorial = c.cod_cir;
-        }
-      }
-
-      if (!circMap.territorial) {
-        const resto = data.find(c => {
-          const n = norm(c.nombre);
-          return !n.includes("afro") && !n.includes("indigena") && !n.includes("indígena");
-        });
-        if (resto) circMap.territorial = resto.cod_cir;
-        console.log("⚠️ circMap.territorial por descarte:", circMap.territorial);
-      }
-
-      // circunscripción según el radio seleccionado
-      const sel = document.querySelector('input[name="modalidad"]:checked')?.value || "territorial";
-      cod_cir = sel === "afro" ? circMap.afro : sel === "indigena" ? circMap.indigena : circMap.territorial;
-
-      document.getElementById("pill-territorial")?.classList.toggle("active", sel === "territorial");
-      document.getElementById("pill-afro")?.classList.toggle("active", sel === "afro");
-      document.getElementById("pill-indigena")?.classList.toggle("active", sel === "indigena");
-
-      if (!cod_cir) {
-        listaPartidos.innerHTML = `<div class="text-center text-secondary py-3">No hay partidos para esta modalidad.</div>`;
-        return;
-      }
-
-      console.log("🧭 circMap =", circMap, " | modalidad:", sel, " | cod_cir:", cod_cir);
-      await cargarPartidos(cod_cir);
-    } catch (e) {
-      console.error(e);
-      msgSel.textContent = "Error al cargar circunscripciones.";
-    }
-  }
-
-  // === 6) Cargar partidos ===
-  async function cargarPartidos(codCir) {
-    try {
-      listaPartidos.innerHTML = `<div class="text-center text-secondary py-3">Cargando partidos...</div>`;
-      const res = await fetch(`${API_URL}/partidos?codigo_dane=${elector.codigo_dane}&cod_cir=${codCir}`);
-      const data = await res.json();
-      partidosData = Array.isArray(data) ? data : [];
-      await renderPartidos();
-    } catch (e) {
-      console.error(e);
-      msgSel.textContent = "Error al cargar partidos.";
-    }
-  }
-
-  // === 7) Renderizar partidos y candidatos ===
-  buscador?.addEventListener("input", async () => {
-    filtro = buscador.value.trim().toLowerCase();
-    await renderPartidos();
-  });
-
-  async function getCandidatos(cod_partido) {
-    if (candidatosCache.has(cod_partido)) return candidatosCache.get(cod_partido);
-    const res = await fetch(`${API_URL}/candidatos?codigo_dane=${elector.codigo_dane}&cod_cir=${cod_cir}&cod_partido=${cod_partido}`);
-    if (res.status === 204) { candidatosCache.set(cod_partido, []); return []; }
-    const data = await res.json();
-    const rows = Array.isArray(data) ? data : [];
-    candidatosCache.set(cod_partido, rows);
-    return rows;
-  }
-
-  function limpiarSeleccionVisual() {
-    document.querySelectorAll(".partido-card").forEach(el => el.classList.remove("active"));
-    document.querySelectorAll(".candidate-chip .chip").forEach(ch => {
-      ch.style.border = "1px solid #d0d7e2";
-      ch.style.boxShadow = "none";
+async function renderPartidos(){
+  listaPartidos.innerHTML="";
+  const items=partidosData;
+  if(!items.length){listaPartidos.innerHTML=`<div class="text-center text-secondary py-3">No hay partidos para mostrar.</div>`;return;}
+  for(const p of items){
+    const tipo=(p.tipo_lista||"").toUpperCase();
+    const col=document.createElement("div");col.className="col-md-6";
+    col.innerHTML=`
+      <div class="partido-card p-3 border rounded mb-3" data-id="${p.cod_partido}">
+        <div class="d-flex justify-content-between align-items-center">
+          <div><div class="fw-bold">${p.nombre}</div><div class="muted small">Lista ${tipo}</div></div>
+          <div><label class="form-check-label me-2 small">Votar por el partido</label><input type="radio" name="seleccion-partido" class="form-check-input"></div>
+        </div><div class="mt-3 candidatos-wrap"></div></div>`;
+    const card=col.querySelector(".partido-card");
+    const rbPartido=col.querySelector('input[name="seleccion-partido"]');
+    const candWrap=col.querySelector(".candidatos-wrap");
+    rbPartido.addEventListener("change",()=>{
+      limpiarSeleccionVisual();card.classList.add("active");rbBlanco.checked=false;
+      setSeleccion({tipo:"partido",cod_partido:p.cod_partido,nombre_partido:p.nombre,cod_cir:cod_cir});
     });
-  }
-
-  function setSeleccion(obj) {
-    // obj puede incluir: { tipo, cod_partido?, num_lista?, id_elector?, nombre_cand?, nombre_partido? }
-    seleccion = obj;
-
-    const circ = getCircLabel();
-
-    if (seleccion?.tipo === "blanco") {
-      resumenSel.textContent = `Voto en blanco · Circ: ${circ}`;
-    } else if (seleccion?.tipo === "partido") {
-      // nombre del partido: si vino en obj úsalo, si no búscalo en partidosData
-      const pNombre = seleccion.nombre_partido ||
-        (partidosData.find(x => x.cod_partido === seleccion.cod_partido)?.nombre || "Partido");
-      resumenSel.textContent = `${pNombre} (lista) · Circ: ${circ}`;
-    } else if (seleccion?.tipo === "candidato") {
-      const pNombre = seleccion.nombre_partido ||
-        (partidosData.find(x => x.cod_partido === seleccion.cod_partido)?.nombre || "Partido");
-      const num = seleccion.num_lista ?? "—";
-      const nom = seleccion.nombre_cand || ""; // si lo enviamos desde la selección
-      // Si no tenemos nombre, se muestra solo el número
-      resumenSel.textContent = nom
-        ? `${pNombre} · Tarjetón #${num} · ${nom} · Circ: ${circ}`
-        : `${pNombre} · Tarjetón #${num} · Circ: ${circ}`;
-    } else {
-      resumenSel.textContent = "—";
-    }
-
-    // Habilitar/Deshabilitar Confirmar
-    btnVotar.disabled = !(chkDeclaracion.checked && seleccion);
-  }
-
-  async function filtrarPartidoOCandidato(items, term) {
-    if (!term) return items;
-    term = term.toLowerCase();
-    const out = [];
-    for (const p of items) {
-      const n = (p.nombre || "").toLowerCase();
-      let ok = n.includes(term);
-      if (!ok && (p.tipo_lista || "").toUpperCase() === "ABIERTA") {
-        const candidatos = await getCandidatos(p.cod_partido);
-        ok = candidatos.some(c => (String(c.num_lista || "").includes(term) || (c.nombre || "").toLowerCase().includes(term)));
-      }
-      if (ok) out.push(p);
-    }
-    return out;
-  }
-
-  async function renderPartidos() {
-    listaPartidos.innerHTML = "";
-    const items = await filtrarPartidoOCandidato(partidosData, filtro);
-
-    contadorResultados.textContent = filtro
-      ? (items.length ? `${items.length} resultado(s)` : "Sin coincidencias")
-      : "";
-
-    if (!items.length) {
-      listaPartidos.innerHTML = `<div class="text-center text-secondary py-3">No hay partidos para mostrar.</div>`;
-      return;
-    }
-
-    for (const p of items) {
-      const tipo = (p.tipo_lista || "").toUpperCase();
-      const col = document.createElement("div");
-      col.className = "col-md-6";
-      col.innerHTML = `
-        <div class="partido-card p-3 border rounded mb-3" data-id="${p.cod_partido}">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="fw-bold">${p.nombre}</div>
-              <div class="muted small">Lista ${tipo}</div>
-            </div>
-            <div>
-              <label class="form-check-label me-2 small">Votar por el partido</label>
-              <input type="radio" name="seleccion-partido" class="form-check-input">
-            </div>
-          </div>
-          <div class="mt-3 candidatos-wrap"></div>
-        </div>
-      `;
-
-      const card = col.querySelector(".partido-card");
-      const rbPartido = col.querySelector('input[type="radio"][name="seleccion-partido"]');
-      const candWrap = col.querySelector(".candidatos-wrap");
-
-      // 👉 Siempre permitir votar por el partido (ABIERTA o CERRADA)
-      rbPartido.addEventListener("change", () => {
-        limpiarSeleccionVisual();
-        card.classList.add("active");
-        rbBlanco.checked = false;
-
-        // Si hay candidatos pintados, al elegir el partido se desmarcan
-        candWrap.querySelectorAll('input[name="seleccion-candidato"]').forEach(rb => { rb.checked = false; });
-
-        setSeleccion({
-          tipo: "partido",
-          cod_partido: p.cod_partido,
-          nombre_partido: p.nombre
+    if(tipo==="ABIERTA"){
+      const candidatos=await getCandidatos(p.cod_partido);
+      candWrap.innerHTML=candidatos.map(c=>`
+        <label class="candidate-chip"><input type="radio" name="sel-cand-${p.cod_partido}" class="d-none"
+        data-num="${c.num_lista}" data-id="${c.id_elector}" data-nombre="${c.nombre||""}">
+        <span class="chip">${c.num_lista}</span></label>`).join("");
+      candWrap.querySelectorAll("input").forEach(rb=>{
+        rb.addEventListener("change",()=>{
+          limpiarSeleccionVisual();card.classList.add("active");
+          rb.parentElement.querySelector(".chip").style.border="2px solid #0d6efd";
+          setSeleccion({tipo:"candidato",cod_partido:p.cod_partido,num_lista:Number(rb.dataset.num),
+            nombre_candidato:rb.dataset.nombre,nombre_partido:p.nombre,cod_cir:cod_cir});
         });
-        msgSel.textContent = "";
       });
-
-      // Si es ABIERTA → renderizamos chips de candidatos
-      if (tipo === "ABIERTA") {
-        const candidatos = await getCandidatos(p.cod_partido);
-        if (!candidatos.length) {
-          candWrap.innerHTML = `<div class="text-muted small">Sin candidatos disponibles.</div>`;
-        } else {
-          candWrap.innerHTML = `
-            <div class="d-flex flex-wrap gap-2">
-              ${candidatos.map(c => `
-                <label class="candidate-chip form-check-label" title="${c.nombre || ""}">
-                  <input type="radio" name="seleccion-candidato" class="form-check-input d-none"
-                         data-cod="${p.cod_partido}" data-id="${c.id_elector}" data-num="${c.num_lista}">
-                  <span class="chip cand-btn">${c.num_lista}</span>
-                </label>
-              `).join("")}
-            </div>
-          `;
-          candWrap.querySelectorAll('input[name="seleccion-candidato"]').forEach(rb => {
-            rb.addEventListener("change", () => {
-              limpiarSeleccionVisual();
-              card.classList.add("active");
-              const chip = rb.parentElement.querySelector(".chip");
-              chip.style.border = "2px solid #0d6efd";
-              chip.style.boxShadow = "0 0 0 2px rgba(13,110,253,.25)";
-
-              rbBlanco.checked = false;
-              // Al elegir candidato, desmarcar el radio de "votar por el partido" de esta tarjeta
-              rbPartido.checked = false;
-
-              setSeleccion({
-                tipo: "candidato",
-                cod_partido: Number(rb.dataset.cod),
-                id_elector: Number(rb.dataset.id),
-                num_lista: Number(rb.dataset.num),
-                nombre_cand: rb.parentElement.getAttribute("title") || "", // viene del title con el nombre
-                nombre_partido: p.nombre
-                cod_cir: cod_cir
-              });
-              msgSel.textContent = "";
-            });
-          });
-        }
-      }
-
-      listaPartidos.appendChild(col);
     }
+    listaPartidos.appendChild(col);
   }
+}
 
-  // === 8) Eventos globales ===
-  rbBlanco?.addEventListener("change", () => {
-    if (rbBlanco.checked) {
-      limpiarSeleccionVisual();
-      setSeleccion({ tipo: "blanco" });
-      msgSel.textContent = "";
-    }
+rbBlanco.addEventListener("change",()=>{if(rbBlanco.checked){limpiarSeleccionVisual();setSeleccion({tipo:"blanco",cod_cir:cod_cir});}});
+
+chkDeclaracion.addEventListener("change",()=>{btnVotar.disabled=!(chkDeclaracion.checked&&seleccion);});
+
+btnVotar.addEventListener("click",async()=>{
+  if(!seleccion){msgSel.textContent="Seleccione una opción.";return;}
+  const body={
+    id_elector:elector.id_elector,
+    codigo_dane:elector.codigo_dane,
+    cod_cir:seleccion.cod_cir,
+    cod_partido:(seleccion.tipo!=="blanco")?seleccion.cod_partido:null,
+    num_lista:(seleccion.tipo==="candidato")?seleccion.num_lista:null,
+    voto_blanco:(seleccion.tipo==="blanco")
+  };
+  const r=await fetch(`${API_URL}/votar`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(r.ok){alert("✅ Voto registrado exitosamente.");window.location="/";}else msgSel.textContent="Error al registrar voto.";
+});
+
+document.querySelectorAll('input[name="modalidad"]').forEach(rb=>{
+  rb.addEventListener("change",async()=>{
+    document.querySelectorAll(".pill").forEach(p=>p.classList.remove("active"));
+    rb.parentElement.classList.add("active");
+    const val=rb.value;cod_cir=val==="afro"?circMap.afro:val==="indigena"?circMap.indigena:circMap.territorial;
+    await cargarPartidos(cod_cir);
+    const selPrev=loadSel();if(selPrev&&selPrev.cod_cir===cod_cir){seleccion=selPrev;setSeleccion(selPrev);}
   });
-
-  chkDeclaracion?.addEventListener("change", () => {
-    btnVotar.disabled = !(chkDeclaracion.checked && seleccion);
-  });
-
-  // === 9) Confirmar voto ===
-  btnVotar?.addEventListener("click", async () => {
-    if (!elector) { alert("Sesión inválida"); return; }
-    if (!cod_cir) { msgSel.textContent = "Seleccione una modalidad."; return; }
-    if (!seleccion) { msgSel.textContent = "Seleccione un partido, un candidato o voto en blanco."; return; }
-    if (!chkDeclaracion.checked) { msgSel.textContent = "Debe aceptar la declaración."; return; }
-
-    const codCirEnviar = seleccion.cod_cir;
-    if (!codCirEnviar) { msgSel.textContent = "No se pudo determinar la circunscripción de la selección."; return; }
-
-
-    try {
-      const body = {
-        id_elector: elector.id_elector,
-        codigo_dane: elector.codigo_dane,
-        cod_cir,
-        cod_partido: (seleccion.tipo === "partido" || seleccion.tipo === "candidato") ? seleccion.cod_partido : null,
-        num_lista:   (seleccion.tipo === "candidato") ? seleccion.num_lista : null,
-        voto_blanco: (seleccion.tipo === "blanco")
-      };
-
-      const res = await fetch(`${API_URL}/votar`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      });
-      const data = await res.json().catch(()=> ({}));
-
-      if (res.ok) {
-        alert("✅ Voto registrado exitosamente.");
-        window.location.href = "/";
-      } else {
-        msgSel.textContent = data.message || "No se pudo registrar el voto.";
-      }
-    } catch (e) {
-      console.error(e);
-      msgSel.textContent = "Error en la conexión con el servidor.";
-    }
-  });
-
-  // === 10) Cambiar de modalidad ===
-  document.querySelectorAll('input[name="modalidad"]').forEach(rb => {
-    rb.addEventListener("change", async () => {
-      document.querySelectorAll(".pill").forEach(p => p.classList.remove("active"));
-      rb.parentElement.classList.add("active");
-
-      const val = rb.value;
-      cod_cir = val === "afro" ? circMap.afro : val === "indigena" ? circMap.indigena : circMap.territorial;
-
-      partidosData = [];
-      candidatosCache.clear();
-      filtro = "";
-      if (buscador) buscador.value = "";
-
-      btnVotar.disabled = !(chkDeclaracion.checked && seleccion);
-
-      if (!cod_cir) {
-        listaPartidos.innerHTML = `<div class="text-center text-secondary py-3">No hay partidos para esta modalidad.</div>`;
-        return;
-      }
-      await cargarPartidos(cod_cir);
-    });
-  });
-
-  // === 11) Iniciar ===
-  cargarCircunscripciones();
+});
 </script>
-
 </body>
 </html>

@@ -134,37 +134,36 @@ const contadorResultados = document.getElementById("contadorResultados");
 // ==== Estado ====
 const circMap = { territorial: null, afro: null, indigena: null };
 const circNames = { territorial: "Territorial", afro: "Afrodescendiente", indigena: "Indígena" };
-let modalidadActual = "territorial";       // 'territorial' | 'afro' | 'indigena'
-let cod_cir = null;                        // cod_cir de la modalidad visible
+let modalidadActual = "territorial";
+let cod_cir = null;
 let partidosData = [];
 let filtro = "";
 let seleccion = null;
-const candidatosCache = new Map();         // clave: `${cod_cir}:${cod_partido}`
+const candidatosCache = new Map(); // clave: `${cod_cir}:${cod_partido}`
 
-// ==== Utilidades selección persistente ====
+// ==== Selección persistente ====
 function saveSel(sel){ if (sel) sessionStorage.setItem("seleccion_voto", JSON.stringify(sel)); }
 function loadSel(){ try { return JSON.parse(sessionStorage.getItem("seleccion_voto") || "null"); } catch { return null; } }
 
-// ==== Muestra horario ====
+// ==== Horario ====
 (function(){
   const f=new Date();
   const dia=f.toLocaleDateString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric"});
   document.getElementById("horarioJornada").textContent=`Desde ${dia}, 8:00 a.m. hasta ${dia}, 4:00 p.m.`;
 })();
 
-// ==== Detección robusta de circunscripción por nombre ====
-function detectCircType(raw){
-  const n = (raw||"").normalize("NFD").replace(/\p{Diacritic}/gu,"").toLowerCase();
-  // Afrodescendiente
-  if (/\bafro|comunidades?\s+negras?|afrodesc/i.test(n)) return "afro";
-  // Indígena
-  if (/indigen/i.test(n)) return "indigena";
-  // Territorial/Ordinaria/General (sólo si está explícito)
-  if (/\bterritorial|ordinaria|general|nacional\b/i.test(n)) return "territorial";
-  return null; // no clasificar por descarte (evita mezclar)
+// ==== Clasificación de circunscripciones por nombre ====
+function normalizeName(raw){
+  return (raw||"").normalize("NFD").replace(/\p{Diacritic}/gu,"").toLowerCase().trim();
+}
+function isAfro(n){ return /\bafro|comunidades?\s+negras?|afrodesc/i.test(n); }
+function isIndigena(n){ return /indigen/i.test(n); }
+function isTerritorial(n){
+  // ampliar palabras clave comunes que suelen traer los catálogos
+  return /\bterritorial(es)?\b|ordinaria|general|departamental|departamento|distrital|distrito|nacional\b/i.test(n);
 }
 
-// ==== Cargar circunscripciones y fijar cod_cir de la vista ====
+// ==== Cargar circunscripciones y fijar cod_cir ====
 async function cargarCircunscripciones(){
   listaPartidos.innerHTML = "";
   partidosData = [];
@@ -176,9 +175,21 @@ async function cargarCircunscripciones(){
   // reset
   circMap.territorial = circMap.afro = circMap.indigena = null;
 
+  // 1) Clasificación por claves explícitas
   for (const c of data) {
-    const t = detectCircType(c.nombre);
-    if (t && !circMap[t]) circMap[t] = c.cod_cir;
+    const n = normalizeName(c.nombre);
+    if (!circMap.afro && isAfro(n)) { circMap.afro = c.cod_cir; continue; }
+    if (!circMap.indigena && isIndigena(n)) { circMap.indigena = c.cod_cir; continue; }
+    if (!circMap.territorial && isTerritorial(n)) { circMap.territorial = c.cod_cir; continue; }
+  }
+
+  // 2) Fallback SEGURO: si no hay territorial aún, toma la primera que NO sea afro/indígena
+  if (!circMap.territorial) {
+    const resto = data.find(c=>{
+      const n = normalizeName(c.nombre);
+      return !isAfro(n) && !isIndigena(n);
+    });
+    if (resto) circMap.territorial = resto.cod_cir;
   }
 
   // modalidad actual desde radios
@@ -196,7 +207,7 @@ async function cargarCircunscripciones(){
   await cargarPartidos(cod_cir);
 }
 
-// ==== Cargar partidos para un cod_cir (limpia caché de candidatos de otra circ) ====
+// ==== Cargar partidos ====
 async function cargarPartidos(codCir){
   listaPartidos.innerHTML = `<div class="text-center text-secondary py-3">Cargando partidos...</div>`;
   // limpiar caché de otra circ
@@ -208,7 +219,7 @@ async function cargarPartidos(codCir){
   await renderPartidos();
 }
 
-// ==== Obtener candidatos para (codCir, codPartido) ====
+// ==== Obtener candidatos ====
 async function getCandidatos(codCir, codPartido){
   const key = `${codCir}:${codPartido}`;
   if (candidatosCache.has(key)) return candidatosCache.get(key);
@@ -220,9 +231,9 @@ async function getCandidatos(codCir, codPartido){
   return arr;
 }
 
-// ==== Pintado resumen selección ====
+// ==== Resumen selección ====
 function setSeleccion(obj){
-  seleccion = { ...obj };    // {tipo, cod_cir, cod_partido?, num_lista?, nombre_partido?, nombre_candidato?}
+  seleccion = { ...obj }; // {tipo, cod_cir, cod_partido?, num_lista?, nombre_partido?, nombre_candidato?}
   saveSel(seleccion);
 
   const circKey = Object.keys(circMap).find(k => circMap[k] === seleccion.cod_cir);
@@ -250,13 +261,13 @@ function limpiarSeleccionVisual(){
   });
 }
 
-// ==== Filtro de búsqueda ====
+// ==== Búsqueda ====
 buscador?.addEventListener("input", async ()=>{
   filtro = buscador.value.trim().toLowerCase();
   await renderPartidos();
 });
 
-// ==== Render de tarjetas de partidos ====
+// ==== Render ====
 async function renderPartidos(){
   listaPartidos.innerHTML = "";
   let items = partidosData;
@@ -314,12 +325,12 @@ async function renderPartidos(){
         tipo: "partido",
         cod_partido: p.cod_partido,
         nombre_partido: p.nombre,
-        cod_cir: cod_cir          // circunscripción visible actual
+        cod_cir: cod_cir
       });
       msgSel.textContent = "";
     });
 
-    // Lista abierta → pintar candidatos
+    // Lista abierta → candidatos
     if (tipo === "ABIERTA") {
       const candidatos = await getCandidatos(cod_cir, p.cod_partido);
       if (!candidatos.length) {
@@ -350,7 +361,7 @@ async function renderPartidos(){
               num_lista: Number(rb.dataset.num),
               nombre_candidato: rb.dataset.nom || "",
               nombre_partido: p.nombre,
-              cod_cir: cod_cir        // circunscripción visible actual
+              cod_cir: cod_cir
             });
             msgSel.textContent = "";
           });
@@ -371,12 +382,12 @@ rbBlanco?.addEventListener("change", ()=>{
   }
 });
 
-// ==== Habilitar botón con declaración ====
+// ==== Declaración ====
 chkDeclaracion?.addEventListener("change", ()=>{
   btnVotar.disabled = !(chkDeclaracion.checked && seleccion);
 });
 
-// ==== Confirmar voto (envía SIEMPRE la circunscripción de la selección) ====
+// ==== Confirmar voto ====
 btnVotar?.addEventListener("click", async ()=>{
   if (!seleccion) { msgSel.textContent = "Seleccione un partido, candidato o voto en blanco."; return; }
   if (!chkDeclaracion.checked) { msgSel.textContent = "Debe aceptar la declaración."; return; }
@@ -413,14 +424,13 @@ document.querySelectorAll('input[name="modalidad"]').forEach(rb=>{
     cod_cir = circMap[modalidadActual] || null;
     filtro = "";
     if (buscador) buscador.value = "";
-    candidatosCache.clear();         // evita mezclar candidatos de otra circ
+    candidatosCache.clear();
     if (!cod_cir) {
       listaPartidos.innerHTML = `<div class="text-center text-secondary py-3">No hay partidos para esta modalidad.</div>`;
       return;
     }
     await cargarPartidos(cod_cir);
 
-    // Si la selección previa coincide con esta circ, la re-pinto en el resumen
     const prev = loadSel();
     if (prev && prev.cod_cir === cod_cir) setSeleccion(prev);
     else btnVotar.disabled = !(chkDeclaracion.checked && seleccion);
@@ -430,7 +440,6 @@ document.querySelectorAll('input[name="modalidad"]').forEach(rb=>{
 // ==== Inicio ====
 (async ()=>{
   await cargarCircunscripciones();
-  // Pintar selección previa (aunque sea de otra circ); no interfiere con render
   const prev = loadSel();
   if (prev) setSeleccion(prev);
 })();

@@ -113,22 +113,131 @@
 
   <!-- Script para mostrar/ocultar contraseña -->
   <script>
-    const togglePassword = document.getElementById("togglePassword");
-    const passwordField = document.getElementById("password");
+    const API_URL = "/api"; // usa ruta relativa en Render
 
-    togglePassword.addEventListener("click", () => {
-      const type =
-        passwordField.getAttribute("type") === "password" ? "text" : "password";
-      passwordField.setAttribute("type", type);
-      togglePassword.textContent = type === "password" ? "👁️" : "🙈";
+    // ============================
+    // Helpers UI
+    // ============================
+    function setMsg(text, kind = "danger") {
+      const msg = document.getElementById("msg");
+      msg.className = `mt-3 text-${kind}`;
+      msg.textContent = text || "";
+    }
+
+    function setHorario() {
+      const fecha = new Date();
+      const opciones = { day: '2-digit', month: '2-digit', year: 'numeric' };
+      const dia = fecha.toLocaleDateString("es-CO", opciones);
+      const el = document.getElementById("horarioJornada");
+      if (el) el.textContent = `Desde ${dia}, 8:00 a.m. hasta ${dia}, 4:00 p.m.`;
+    }
+
+    function disableButton(btn, textWhileDisabled) {
+      if (!btn) return () => {};
+      const old = btn.textContent;
+      btn.disabled = true;
+      if (textWhileDisabled) btn.textContent = textWhileDisabled;
+      return () => { btn.disabled = false; btn.textContent = old; };
+    }
+
+    // ============================
+    // Boot
+    // ============================
+    window.addEventListener("DOMContentLoaded", () => {
+      // Si ya hay sesión válida, puedes mandar directo a votar (opcional):
+      try {
+        const elect = JSON.parse(sessionStorage.getItem("elector") || "null");
+        if (elect && elect.id_elector) {
+          // Descomenta si quieres saltar el login cuando ya hay sesión
+          // window.location.replace("/votar.html");
+        }
+      } catch {}
+
+      setHorario();
+
+      // Toggle de contraseña
+      const togglePassword = document.getElementById("togglePassword");
+      const passwordField = document.getElementById("password");
+      if (togglePassword && passwordField) {
+        togglePassword.addEventListener("click", () => {
+          const type = passwordField.getAttribute("type") === "password" ? "text" : "password";
+          passwordField.setAttribute("type", type);
+          togglePassword.textContent = type === "password" ? "👁️" : "🙈";
+        });
+      }
+
+      // Manejador de login
+      const form   = document.getElementById("loginForm");
+      const tipoId = document.getElementById("tipo_id");
+      const idEl   = document.getElementById("id_elector");
+      const passEl = document.getElementById("password");
+
+      if (!form) return;
+
+      // Asegúrate de que el form NO tenga action
+      form.removeAttribute("action");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        setMsg("");
+
+        const id_elector = (idEl?.value || "").trim();
+        const password   = (passEl?.value || "");
+
+        // Validaciones mínimas
+        if (!/^\d+$/.test(id_elector)) {
+          setMsg("Documento inválido. Debe ser numérico.");
+          idEl?.focus();
+          return;
+        }
+        if (!password) {
+          setMsg("Ingrese la contraseña.");
+          passEl?.focus();
+          return;
+        }
+
+        const enableBtn = disableButton(form.querySelector('button[type="submit"]'), "Validando…");
+
+        try {
+          const res = await fetch(`${API_URL}/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id_elector, password })
+          });
+
+          // Intenta parsear la respuesta siempre
+          let data = {};
+          try { data = await res.json(); } catch {}
+
+          if (!res.ok) {
+            setMsg(data.message || "Credenciales inválidas.");
+            enableBtn();
+            return;
+          }
+
+          // data.elector: { id_elector, nombres, codigo_dane, ... }
+          if (!data || !data.elector || !data.elector.id_elector) {
+            setMsg("Respuesta inválida del servidor.");
+            enableBtn();
+            return;
+          }
+
+          // GUARDA SÓLO EN sessionStorage
+          sessionStorage.setItem("elector", JSON.stringify({
+            id_elector: data.elector.id_elector,
+            nombres:    data.elector.nombres,
+            codigo_dane:data.elector.codigo_dane
+          }));
+
+          // Redirige a votar
+          window.location.replace("/votar.html");
+        } catch (err) {
+          console.error(err);
+          setMsg("Error de conexión con el servidor.");
+          enableBtn();
+        }
+      });
     });
-
-    // Mostrar horario de jornada automáticamente (8am a 4pm)
-    const fecha = new Date();
-    const opciones = { day: '2-digit', month: '2-digit', year: 'numeric' };
-    const dia = fecha.toLocaleDateString("es-CO", opciones);
-    document.getElementById("horarioJornada").textContent =
-      `Desde ${dia}, 8:00 a.m. hasta ${dia}, 4:00 p.m.`;
   </script>
 </body>
 </html>

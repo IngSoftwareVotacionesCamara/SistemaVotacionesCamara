@@ -184,19 +184,10 @@
         const id_elector = (idEl?.value || "").trim();
         const password   = (passEl?.value || "");
 
-        // Validaciones mínimas
-        if (!/^\d+$/.test(id_elector)) {
-          setMsg("Documento inválido. Debe ser numérico.");
-          idEl?.focus();
-          return;
-        }
-        if (!password) {
-          setMsg("Ingrese la contraseña.");
-          passEl?.focus();
-          return;
-        }
+        if (!/^\d+$/.test(id_elector)) { setMsg("Documento inválido."); return; }
+        if (!password) { setMsg("Ingrese la contraseña."); return; }
 
-        const enableBtn = disableButton(form.querySelector('button[type="submit"]'), "Validando…");
+        const enable = disableButton(form.querySelector('button[type="submit"]'), "Validando…");
 
         try {
           const res = await fetch(`${API_URL}/login`, {
@@ -204,33 +195,32 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id_elector, password })
           });
-
-          // Intenta parsear la respuesta siempre
-          let data = {};
-          try { data = await res.json(); } catch {}
-
-          if (!res.ok) {
-            setMsg(data.message || "Credenciales inválidas.");
-            enableBtn();
-            return;
+          const data = await res.json().catch(()=> ({}));
+          if (!res.ok || !data?.elector?.id_elector) {
+            setMsg(data.message || "Credenciales inválidas."); enable(); return;
           }
 
-          // data.elector: { id_elector, nombres, codigo_dane, ... }
-          if (!data || !data.elector || !data.elector.id_elector) {
-            setMsg("Respuesta inválida del servidor.");
-            enableBtn();
-            return;
-          }
-
-          // GUARDA SÓLO EN sessionStorage
-          sessionStorage.setItem("elector", JSON.stringify({
+          // Guarda en sessionStorage y respaldo en localStorage
+          const payload = {
             id_elector: data.elector.id_elector,
             nombres:    data.elector.nombres,
             codigo_dane:data.elector.codigo_dane
-          }));
+          };
+          sessionStorage.setItem("elector", JSON.stringify(payload));
+          localStorage.setItem("elector_backup", JSON.stringify(payload));
+
+          // Redirige cuando la sesión ya está escrita
+          window.location.assign("/votar.html");
+        } catch (err) {
+          console.error(err);
+          setMsg("Error de conexión con el servidor.");
+        } finally {
+          enable();
+        }
+      });
 
           // Redirige a votar
-          window.location.replace("/votar.html");
+          window.location.assign("/votar.html");
         } catch (err) {
           console.error(err);
           setMsg("Error de conexión con el servidor.");

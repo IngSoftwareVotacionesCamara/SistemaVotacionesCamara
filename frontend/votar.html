@@ -455,21 +455,35 @@
     }
   });
 
-  // === 10) Cambiar de modalidad ===
+    // === 10) Cambiar de modalidad ===
   document.querySelectorAll('input[name="modalidad"]').forEach(rb => {
     rb.addEventListener("change", async () => {
       document.querySelectorAll(".pill").forEach(p => p.classList.remove("active"));
       rb.parentElement.classList.add("active");
       const val = rb.value;
-      cod_cir = (val === "afro") ? circMap.afro : (val === "indigena" ? circMap.indigena : circMap.territorial);
+
+      // 🔹 Recalcular circunscripción según selección
+      if (val === "afro") cod_cir = circMap.afro;
+      else if (val === "indigena") cod_cir = circMap.indigena;
+      else cod_cir = circMap.territorial;
+
+      console.log("🟣 Cambio de modalidad:", val, "→ cod_cir =", cod_cir);
+
       partidosData = [];
       candidatosCache.clear();
       filtro = "";
       buscador.value = "";
       setSeleccion(null);
+
+      if (!cod_cir) {
+        msgSel.textContent = "No hay partidos para esta modalidad.";
+        listaPartidos.innerHTML = "";
+        return;
+      }
       await cargarPartidos(cod_cir);
     });
   });
+
 
   // === 11) Iniciar ===
   cargarCircunscripciones();

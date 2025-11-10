@@ -206,7 +206,7 @@
   // === 4) Pintar identificación ===
   document.getElementById("numIdent").value = elector.id_elector ?? "";
 
-  // === 5) Cargar circunscripciones ===
+ // === 5) Cargar circunscripciones ===
   const circMap = { territorial: null, afro: null, indigena: null };
 
   async function cargarCircunscripciones() {
@@ -217,6 +217,7 @@
       const res = await fetch(`${API_URL}/circunscripciones?codigo_dane=${elector.codigo_dane}`);
       const data = await res.json();
 
+      // Mapear circunscripciones según su nombre
       data.forEach(c => {
         const nombre = (c.nombre || "").toLowerCase();
         if (nombre.includes("afro")) circMap.afro = c.cod_cir;
@@ -224,16 +225,23 @@
         else circMap.territorial = c.cod_cir;
       });
 
-      cod_cir = circMap.territorial ?? circMap.afro ?? circMap.indigena ?? null;
+      // ✅ Detectar cuál modalidad está seleccionada actualmente
+      const seleccionada = document.querySelector('input[name="modalidad"]:checked')?.value || "territorial";
+      if (seleccionada === "indigena") cod_cir = circMap.indigena;
+      else if (seleccionada === "afro") cod_cir = circMap.afro;
+      else cod_cir = circMap.territorial;
 
-      document.getElementById("pill-territorial")?.classList.toggle("active", cod_cir === circMap.territorial);
-      document.getElementById("pill-afro")?.classList.toggle("active", cod_cir === circMap.afro);
-      document.getElementById("pill-indigena")?.classList.toggle("active", cod_cir === circMap.indigena);
+      // Pintar visualmente la selección actual
+      document.getElementById("pill-territorial")?.classList.toggle("active", seleccionada === "territorial");
+      document.getElementById("pill-afro")?.classList.toggle("active", seleccionada === "afro");
+      document.getElementById("pill-indigena")?.classList.toggle("active", seleccionada === "indigena");
 
       if (!cod_cir) {
-        msgSel.textContent = "No hay circunscripciones disponibles.";
+        msgSel.textContent = "No hay circunscripciones disponibles para esta modalidad.";
         return;
       }
+
+      console.log("🟢 circunscripción seleccionada:", cod_cir, "modo:", seleccionada);
       await cargarPartidos(cod_cir);
     } catch (e) {
       console.error(e);

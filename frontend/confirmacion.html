@@ -169,7 +169,11 @@
       sessionStorage.setItem("cert_descargado", "1");
       alertCert.className = "alert alert-success py-2 px-3 mb-3";
       alertCert.textContent = "Certificado descargado correctamente. Ya puedes salir.";
+
+      // Cambia el estilo del botón "Salir" al mismo del botón azul de Validar
       btnSalir.disabled = false;
+      btnSalir.classList.remove("btn-outline-secondary");
+      btnSalir.classList.add("btn-primary", "text-white");
     });
 
     btnSalir?.addEventListener("click", () => {

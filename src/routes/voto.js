@@ -1,3 +1,4 @@
+// src/routes/voto.js
 import express from 'express';
 import { pool } from '../db.js';
 
@@ -16,6 +17,7 @@ router.post('/votar', async (req, res) => {
       voto_blanco
     } = req.body || {};
 
+    // --- Validaciones básicas ---
     if (!id_elector || !codigo_dane || !cod_cir) {
       return res.status(400).json({ message: "Faltan campos obligatorios: id_elector, codigo_dane, cod_cir." });
     }
@@ -28,16 +30,38 @@ router.post('/votar', async (req, res) => {
 
     await client.query('BEGIN');
 
-    // 1) Estado del elector (bloquea fila)
+    // --- 1) Estado del elector (bloquea fila) ---
     const qElector = await client.query(
-      `SELECT estado FROM votaciones.electores WHERE id_elector = $1 FOR UPDATE`,
+      `SELECT estado, bloqueado_hasta
+         FROM votaciones.electores
+        WHERE id_elector = $1
+        FOR UPDATE`,
       [id_elector]
     );
-    if (qElector.rowCount === 0) throw { status: 404, message: "Elector no existe." };
-    if (qElector.rows[0].estado === 'EFECTUADO') throw { status: 409, message: "El elector ya registró su voto." };
-    if (qElector.rows[0].estado === 'BLOQUEADO') throw { status: 423, message: "El elector está temporalmente bloqueado." };
 
-    // 2) Validar adscripción (si no es blanco)
+    if (qElector.rowCount === 0)
+      throw { status: 404, message: "Elector no existe." };
+
+    let { estado, bloqueado_hasta } = qElector.rows[0];
+
+    // --- Auto-desbloqueo si ya venció ---
+    if (estado === 'BLOQUEADO' && bloqueado_hasta && new Date(bloqueado_hasta) <= new Date()) {
+      await client.query(
+        `UPDATE votaciones.electores
+            SET estado = 'DISPONIBLE', bloqueado_hasta = NULL
+          WHERE id_elector = $1`,
+        [id_elector]
+      );
+      estado = 'DISPONIBLE';
+      bloqueado_hasta = null;
+    }
+
+    if (estado === 'EFECTUADO')
+      throw { status: 409, message: "El elector ya registró su voto." };
+    if (estado === 'BLOQUEADO')
+      throw { status: 423, message: "El elector está temporalmente bloqueado." };
+
+    // --- 2) Validar adscripción (si no es blanco) ---
     if (!voto_blanco) {
       const qAds = await client.query(
         `SELECT 1
@@ -46,10 +70,11 @@ router.post('/votar', async (req, res) => {
           LIMIT 1`,
         [codigo_dane, cod_cir, cod_partido]
       );
-      if (qAds.rowCount === 0) throw { status: 400, message: "El partido no está adscrito a este departamento/circunscripción." };
+      if (qAds.rowCount === 0)
+        throw { status: 400, message: "El partido no está adscrito a este departamento/circunscripción." };
     }
 
-    // 3) Si viene candidato, validarlo (si tienes tabla candidatos)
+    // --- 3) Si viene candidato, validarlo ---
     const hayCandidato = !voto_blanco && id_candidato != null;
     if (hayCandidato) {
       const qCand = await client.query(
@@ -65,10 +90,11 @@ router.post('/votar', async (req, res) => {
           ? [id_candidato, cod_partido, codigo_dane, cod_cir, num_lista]
           : [id_candidato, cod_partido, codigo_dane, cod_cir]
       );
-      if (qCand.rowCount === 0) throw { status: 400, message: "El candidato no es válido para ese partido/circunscripción." };
+      if (qCand.rowCount === 0)
+        throw { status: 400, message: "El candidato no es válido para ese partido/circunscripción." };
     }
 
-    // 4) Insertar en vota (deja que cod_vota sea autoincremental/serial/identity)
+    // --- 4) Insertar en vota ---
     const qVota = await client.query(
       `INSERT INTO votaciones.vota (cod_partido, codigo_dane, cod_cir)
        VALUES ($1, $2, $3)
@@ -76,24 +102,26 @@ router.post('/votar', async (req, res) => {
       [voto_blanco ? null : cod_partido, codigo_dane, cod_cir]
     );
 
-    // 5) Si hubo candidato, insertar en elige
+    // --- 5) Si hubo candidato, insertar en elige ---
     if (hayCandidato) {
       await client.query(
-        `INSERT INTO votaciones.elige (id_elector) VALUES ($1)`,
+        `INSERT INTO votaciones.elige (id_elector)
+         VALUES ($1)`,
         [id_candidato]
       );
     }
 
-    // 6) Marcar elector como EFECTUADO
+    // --- 6) Marcar elector como EFECTUADO y limpiar bloqueo ---
     await client.query(
       `UPDATE votaciones.electores
-          SET estado = 'EFECTUADO'
+          SET estado = 'EFECTUADO', bloqueado_hasta = NULL
         WHERE id_elector = $1`,
       [id_elector]
     );
 
     await client.query('COMMIT');
     return res.status(200).json({ ok: true, cod_vota: qVota.rows[0].cod_vota });
+
   } catch (err) {
     await client.query('ROLLBACK');
     const status = err?.status || 500;

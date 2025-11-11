@@ -11,6 +11,7 @@ import { pool } from "./db.js";
 import authRoutes from "./routes/auth.js";
 import votoRoutes from "./routes/voto.js";
 import catalogosRoutes from "./routes/catalogos.js";
+import votoRouter from './routes/voto.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const API_URL = "https://sistemavotacionescamara.onrender.com/api";
@@ -26,6 +27,7 @@ app.use(express.json());
 app.use("/api", authRoutes);
 app.use("/api", votoRoutes);
 app.use("/api", catalogosRoutes);
+app.use('/api', votoRouter);
 
 // Salud
 app.get("/api/health", (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));

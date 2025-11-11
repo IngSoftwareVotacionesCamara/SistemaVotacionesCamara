@@ -159,7 +159,6 @@ function normalizeName(raw){
 function isAfro(n){ return /\bafro|comunidades?\s+negras?|afrodesc/i.test(n); }
 function isIndigena(n){ return /indigen/i.test(n); }
 function isTerritorial(n){
-  // ampliar palabras clave comunes que suelen traer los catálogos
   return /\bterritorial(es)?\b|ordinaria|general|departamental|departamento|distrital|distrito|nacional\b/i.test(n);
 }
 
@@ -183,7 +182,7 @@ async function cargarCircunscripciones(){
     if (!circMap.territorial && isTerritorial(n)) { circMap.territorial = c.cod_cir; continue; }
   }
 
-  // 2) Fallback SEGURO: si no hay territorial aún, toma la primera que NO sea afro/indígena
+  // 2) Fallback SEGURO
   if (!circMap.territorial) {
     const resto = data.find(c=>{
       const n = normalizeName(c.nombre);
@@ -233,7 +232,8 @@ async function getCandidatos(codCir, codPartido){
 
 // ==== Resumen selección ====
 function setSeleccion(obj){
-  seleccion = { ...obj }; // {tipo, cod_cir, cod_partido?, num_lista?, nombre_partido?, nombre_candidato?}
+  // {tipo, cod_cir, cod_partido?, num_lista?, nombre_partido?, nombre_candidato?, id_candidato?}
+  seleccion = { ...obj };
   saveSel(seleccion);
 
   const circKey = Object.keys(circMap).find(k => circMap[k] === seleccion.cod_cir);
@@ -336,33 +336,61 @@ async function renderPartidos(){
       if (!candidatos.length) {
         candWrap.innerHTML = `<div class="text-muted small">Sin candidatos disponibles.</div>`;
       } else {
+        // ----- RENDER CANDIDATOS (con id para chip + dataset coherente) -----
         candWrap.innerHTML = `
           <div class="d-flex flex-wrap gap-2">
-            ${candidatos.map(c => `
-              <label class="candidate-chip" title="${c.nombre || ""}">
-                <input type="radio" name="sel-cand-${p.cod_partido}" class="d-none"
-                       data-id="${c.id_elector}" data-num="${c.num_lista}" data-nom="${c.nombre || ""}">
-                <span class="chip">${c.num_lista}</span>
-              </label>
-            `).join("")}
+            ${candidatos.map(c => {
+              const rid = `cand-${p.cod_partido}-${c.num_lista}`;
+              const nom = c.nombre || "";
+              return `
+                <label class="candidate-chip" title="${nom}">
+                  <input
+                    type="radio"
+                    name="seleccion-candidato"
+                    class="d-none"
+                    id="${rid}"
+                    data-cod="${p.cod_partido}"
+                    data-idcand="${c.id_elector}"
+                    data-num="${c.num_lista}"
+                  >
+                  <span class="chip" data-for="${rid}">${c.num_lista}</span>
+                </label>
+              `;
+            }).join("")}
           </div>
         `;
+
+        // Chip click → marcar radio y disparar change
+        candWrap.querySelectorAll('.chip[data-for]').forEach(chip=>{
+          const rid = chip.getAttribute('data-for');
+          const input = candWrap.querySelector(`#${CSS.escape(rid)}`);
+          chip.style.cursor = "pointer";
+          chip.addEventListener("click", ()=>{
+            if (!input) return;
+            input.checked = true;
+            input.dispatchEvent(new Event("change", { bubbles:true }));
+          });
+        });
+
+        // Listener oficial de cambio
         candWrap.querySelectorAll('input[name="seleccion-candidato"]').forEach(rb => {
           rb.addEventListener("change", () => {
             limpiarSeleccionVisual();
             card.classList.add("active");
             const chip = rb.parentElement.querySelector(".chip");
-            chip.style.border = "2px solid #0d6efd";
-            chip.style.boxShadow = "0 0 0 2px rgba(13,110,253,.25)";
+            if (chip) {
+              chip.style.border = "2px solid #0d6efd";
+              chip.style.boxShadow = "0 0 0 2px rgba(13,110,253,.25)";
+            }
             rbBlanco.checked = false;
             rbPartido.checked = false;
 
             setSeleccion({
               tipo: "candidato",
               cod_partido: Number(rb.dataset.cod),
-              id_candidato: Number(rb.dataset.id),      // 👈 nombre consistente
+              id_candidato: Number(rb.dataset.idcand),
               num_lista: Number(rb.dataset.num),
-              nombre_cand: rb.parentElement.getAttribute("title") || "",
+              nombre_candidato: rb.parentElement.getAttribute("title") || "",
               nombre_partido: p.nombre,
               cod_cir: cod_cir
             });
@@ -376,100 +404,99 @@ async function renderPartidos(){
   }
 }
 
-  // ==== Voto en blanco ====
-  rbBlanco?.addEventListener("change", ()=>{
-    if (rbBlanco.checked) {
-      limpiarSeleccionVisual();
-      setSeleccion({ tipo: "blanco", cod_cir });
-      msgSel.textContent = "";
-    }
-  });
+// ==== Voto en blanco ====
+rbBlanco?.addEventListener("change", ()=>{
+  if (rbBlanco.checked) {
+    limpiarSeleccionVisual();
+    setSeleccion({ tipo: "blanco", cod_cir });
+    msgSel.textContent = "";
+  }
+});
 
-  // ==== Declaración ====
-  chkDeclaracion?.addEventListener("change", ()=>{
-    btnVotar.disabled = !(chkDeclaracion.checked && seleccion);
-  });
+// ==== Declaración ====
+chkDeclaracion?.addEventListener("change", ()=>{
+  btnVotar.disabled = !(chkDeclaracion.checked && seleccion);
+});
 
-  // ==== Confirmar voto ====
-  btnVotar?.addEventListener("click", async () => {
-    if (!seleccion) { msgSel.textContent = "Seleccione un partido, candidato o voto en blanco."; return; }
-    if (!chkDeclaracion.checked) { msgSel.textContent = "Debe aceptar la declaración."; return; }
+// ==== Confirmar voto ====
+btnVotar?.addEventListener("click", async () => {
+  if (!seleccion) { msgSel.textContent = "Seleccione un partido, candidato o voto en blanco."; return; }
+  if (!chkDeclaracion.checked) { msgSel.textContent = "Debe aceptar la declaración."; return; }
 
-    const codCirEnviar = seleccion.cod_cir ?? cod_cir;
+  const codCirEnviar = seleccion.cod_cir ?? cod_cir;
 
-    const body = {
-      id_elector: elector.id_elector,
-      codigo_dane: elector.codigo_dane,
-      cod_cir: codCirEnviar,
-      cod_partido: (seleccion.tipo !== "blanco") ? seleccion.cod_partido : null,
-      num_lista:   (seleccion.tipo === "candidato") ? seleccion.num_lista : null,
-      id_candidato:(seleccion.tipo === "candidato") ? seleccion.id_candidato : null,  // 👈 clave correcta
-      voto_blanco: (seleccion.tipo === "blanco")
-    };
+  const body = {
+    id_elector: elector.id_elector,
+    codigo_dane: elector.codigo_dane,
+    cod_cir: codCirEnviar,
+    cod_partido: (seleccion.tipo !== "blanco") ? seleccion.cod_partido : null,
+    num_lista:   (seleccion.tipo === "candidato") ? seleccion.num_lista : null,
+    id_candidato:(seleccion.tipo === "candidato") ? seleccion.id_candidato : null,
+    voto_blanco: (seleccion.tipo === "blanco")
+  };
 
-    try {
-      const res = await fetch(`${API_URL}/votar`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json().catch(()=> ({}));
-      if (res.ok) {
-        msgSel.classList.remove("text-danger");
-        msgSel.classList.add("text-success");
-        msgSel.textContent = "✅ Voto registrado. ¡Gracias por participar!";
-        // window.location.href = "/";
-      } else {
-        msgSel.classList.add("text-danger");
-        msgSel.textContent = data.message || `Error al registrar voto (HTTP ${res.status}).`;
-      }
-    } catch (e) {
-      console.error(e);
-      msgSel.classList.add("text-danger");
-      msgSel.textContent = "Error en la conexión con el servidor.";
-    }
-  });
-
-  (function controlarBloqueo() {
-    const QUINCE_MIN = 15 * 60 * 1000;
-
-    setTimeout(async () => {
-      try {
-        await fetch(`${API_URL}/electores/${elector.id_elector}/bloquear`, { method: "POST" });
-      } catch (_) { /* no-op */ }
-      // Vuelve al login sin formulario de votación
-      window.location.href = "/";
-    }, QUINCE_MIN);
-  })();
-
-  // ==== Cambio de modalidad ====
-  document.querySelectorAll('input[name="modalidad"]').forEach(rb=>{
-    rb.addEventListener("change", async ()=>{
-      document.querySelectorAll(".pill").forEach(p=>p.classList.remove("active"));
-      rb.parentElement.classList.add("active");
-      modalidadActual = rb.value;
-      cod_cir = circMap[modalidadActual] || null;
-      filtro = "";
-      if (buscador) buscador.value = "";
-      candidatosCache.clear();
-      if (!cod_cir) {
-        listaPartidos.innerHTML = `<div class="text-center text-secondary py-3">No hay partidos para esta modalidad.</div>`;
-        return;
-      }
-      await cargarPartidos(cod_cir);
-
-      const prev = loadSel();
-      if (prev && prev.cod_cir === cod_cir) setSeleccion(prev);
-      else btnVotar.disabled = !(chkDeclaracion.checked && seleccion);
+  try {
+    const res = await fetch(`${API_URL}/votar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     });
-  });
+    const data = await res.json().catch(()=> ({}));
+    if (res.ok) {
+      msgSel.classList.remove("text-danger");
+      msgSel.classList.add("text-success");
+      msgSel.textContent = "✅ Voto registrado. ¡Gracias por participar!";
+      // window.location.href = "/";
+    } else {
+      msgSel.classList.add("text-danger");
+      msgSel.textContent = data.message || `Error al registrar voto (HTTP ${res.status}).`;
+    }
+  } catch (e) {
+    console.error(e);
+    msgSel.classList.add("text-danger");
+    msgSel.textContent = "Error en la conexión con el servidor.";
+  }
+});
 
-  // ==== Inicio ====
-  (async ()=>{
-    await cargarCircunscripciones();
+// ==== Bloqueo a los 15 min ====
+(function controlarBloqueo() {
+  const QUINCE_MIN = 15 * 60 * 1000;
+  setTimeout(async () => {
+    try {
+      await fetch(`${API_URL}/electores/${elector.id_elector}/bloquear`, { method: "POST" });
+    } catch (_) { /* no-op */ }
+    window.location.href = "/";
+  }, QUINCE_MIN);
+})();
+
+// ==== Cambio de modalidad ====
+document.querySelectorAll('input[name="modalidad"]').forEach(rb=>{
+  rb.addEventListener("change", async ()=>{
+    document.querySelectorAll(".pill").forEach(p=>p.classList.remove("active"));
+    rb.parentElement.classList.add("active");
+    modalidadActual = rb.value;
+    cod_cir = circMap[modalidadActual] || null;
+    filtro = "";
+    if (buscador) buscador.value = "";
+    candidatosCache.clear();
+    if (!cod_cir) {
+      listaPartidos.innerHTML = `<div class="text-center text-secondary py-3">No hay partidos para esta modalidad.</div>`;
+      return;
+    }
+    await cargarPartidos(cod_cir);
+
     const prev = loadSel();
-    if (prev) setSeleccion(prev);
-  })();
+    if (prev && prev.cod_cir === cod_cir) setSeleccion(prev);
+    else btnVotar.disabled = !(chkDeclaracion.checked && seleccion);
+  });
+});
+
+// ==== Inicio ====
+(async ()=>{
+  await cargarCircunscripciones();
+  const prev = loadSel();
+  if (prev) setSeleccion(prev);
+})();
 </script>
 </body>
 </html>

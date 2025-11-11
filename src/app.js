@@ -33,7 +33,6 @@ app.use('/api', electoresRouter);
 
 // Salud
 app.get("/api/health", (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
 

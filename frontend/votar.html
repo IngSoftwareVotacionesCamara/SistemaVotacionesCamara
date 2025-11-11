@@ -347,19 +347,22 @@ async function renderPartidos(){
             `).join("")}
           </div>
         `;
-        candWrap.querySelectorAll('input[type="radio"]').forEach(rb=>{
-          rb.addEventListener("change", ()=>{
+        candWrap.querySelectorAll('input[name="seleccion-candidato"]').forEach(rb => {
+          rb.addEventListener("change", () => {
             limpiarSeleccionVisual();
             card.classList.add("active");
             const chip = rb.parentElement.querySelector(".chip");
             chip.style.border = "2px solid #0d6efd";
             chip.style.boxShadow = "0 0 0 2px rgba(13,110,253,.25)";
             rbBlanco.checked = false;
+            rbPartido.checked = false;
+
             setSeleccion({
               tipo: "candidato",
-              cod_partido: p.cod_partido,
+              cod_partido: Number(rb.dataset.cod),
+              id_candidato: Number(rb.dataset.id),      // 👈 nombre consistente
               num_lista: Number(rb.dataset.num),
-              nombre_candidato: rb.dataset.nom || "",
+              nombre_cand: rb.parentElement.getAttribute("title") || "",
               nombre_partido: p.nombre,
               cod_cir: cod_cir
             });
@@ -389,59 +392,41 @@ async function renderPartidos(){
 
   // ==== Confirmar voto ====
   btnVotar?.addEventListener("click", async () => {
-    // Validaciones mínimas de sesión y selección
-    if (!elector) { alert("Sesión inválida"); return; }
-    if (!seleccion) { msgSel.textContent = "Seleccione un partido, un candidato o voto en blanco."; return; }
+    if (!seleccion) { msgSel.textContent = "Seleccione un partido, candidato o voto en blanco."; return; }
     if (!chkDeclaracion.checked) { msgSel.textContent = "Debe aceptar la declaración."; return; }
 
-    // Circunscripción a enviar: la de la selección (si existe) o la actual
-    const codCirEnviar = (seleccion.cod_cir ?? cod_cir);
-    if (!codCirEnviar) { msgSel.textContent = "No se pudo determinar la circunscripción."; return; }
+    const codCirEnviar = seleccion.cod_cir ?? cod_cir;
 
-    // Construcción del payload acorde a los 3 casos: blanco, partido, candidato
     const body = {
-      id_elector:  elector.id_elector,                                 // votante
-      codigo_dane: elector.codigo_dane,                                 // depto del votante
-      cod_cir:     codCirEnviar,                                        // circunscripción de la selección
-      cod_partido: (seleccion.tipo === "partido" || seleccion.tipo === "candidato")
-                     ? seleccion.cod_partido : null,
+      id_elector: elector.id_elector,
+      codigo_dane: elector.codigo_dane,
+      cod_cir: codCirEnviar,
+      cod_partido: (seleccion.tipo !== "blanco") ? seleccion.cod_partido : null,
       num_lista:   (seleccion.tipo === "candidato") ? seleccion.num_lista : null,
-      id_candidato:(seleccion.tipo === "candidato") ? seleccion.id_elector : null, // id del CANDIDATO
-      voto_blanco: (seleccion.tipo === "blanco") === true
+      id_candidato:(seleccion.tipo === "candidato") ? seleccion.id_candidato : null,  // 👈 clave correcta
+      voto_blanco: (seleccion.tipo === "blanco")
     };
 
-    // UI: limpiar mensaje y deshabilitar botón mientras envía
-    msgSel.textContent = "";
-    msgSel.classList.remove("text-danger", "text-success");
-    btnVotar.disabled = true;
-
     try {
-      const res  = await fetch(`${API_URL}/votar`, {
+      const res = await fetch(`${API_URL}/votar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
       });
-      const data = await res.json().catch(() => ({}));
-
+      const data = await res.json().catch(()=> ({}));
       if (res.ok) {
+        msgSel.classList.remove("text-danger");
         msgSel.classList.add("text-success");
         msgSel.textContent = "✅ Voto registrado. ¡Gracias por participar!";
-        // Opcional: redirigir al inicio
         // window.location.href = "/";
       } else {
-        // Mensajes típicos del backend:
-        // 409 -> elector ya votó (ESTADO = EFECTUADO)
-        // 423/400 -> elector bloqueado / datos inválidos
         msgSel.classList.add("text-danger");
         msgSel.textContent = data.message || `Error al registrar voto (HTTP ${res.status}).`;
-        // Rehabilita el botón por si el usuario quiere corregir algo
-        btnVotar.disabled = !(chkDeclaracion.checked && seleccion);
       }
-    } catch (err) {
-      console.error(err);
+    } catch (e) {
+      console.error(e);
       msgSel.classList.add("text-danger");
       msgSel.textContent = "Error en la conexión con el servidor.";
-      btnVotar.disabled = !(chkDeclaracion.checked && seleccion);
     }
   });
 

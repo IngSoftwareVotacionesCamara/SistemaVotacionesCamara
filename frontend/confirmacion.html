@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Confirmación de voto</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <style>
+    body{background:#f4f7fb;font-family:"Segoe UI", Tahoma, Geneva, Verdana, sans-serif}
+    .wrap{max-width:800px;margin:60px auto;background:#fff;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.08);padding:28px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="d-flex align-items-center justify-content-between">
+        <h4 class="mb-0">✅ Voto registrado</h4>
+        <img src="img/logo_cne.png" alt="CNE" style="height:44px"/>
+    </div>
+    <hr/>
+    <p class="lead mb-1">Tu voto fue registrado correctamente.</p>
+    <p class="text-muted">Puedes descargar tu certificado de votación y, posteriormente, salir al inicio.</p>
+
+    <div id="detalle" class="mb-3 small text-muted"></div>
+
+    <div id="msg" class="mb-3"></div>
+
+    <div class="d-flex gap-2">
+        <button id="btnDescargar" class="btn btn-success">⬇️ Descargar certificado</button>
+        <button id="btnSalir" class="btn btn-outline-secondary" disabled>Salir</button>
+    </div>
+</div>
+
+<script>
+    const API_URL = "/api";
+
+    // Util: obtener query param
+    function qp(name){
+      const u=new URL(window.location.href);
+      return u.searchParams.get(name);
+    }
+
+    // Carga datos de sesión y seleccion
+    const elector = (()=>{ try{return JSON.parse(sessionStorage.getItem("elector")||"null");}catch{return null;} })();
+    const seleccion = (()=>{ try{return JSON.parse(sessionStorage.getItem("seleccion_voto")||"null");}catch{return null;} })();
+    const cod_vota = qp("cod_vota") || "";
+
+    // Si no hay sesión, vuelve a login
+    if(!elector || !elector.id_elector){
+      window.location.replace("/");
+    }
+
+    // Render detalle
+    (function renderDetalle(){
+      const el=document.getElementById("detalle");
+      const partes=[];
+      partes.push(`Elector: ${elector.nombres || ""} (ID: ${elector.id_elector})`);
+      if (seleccion) {
+        const circ = seleccion.cod_cir ? ` · circ: ${seleccion.cod_cir}` : "";
+        if (seleccion.tipo === "blanco") {
+          partes.push(`Voto en blanco${circ}`);
+        } else if (seleccion.tipo === "partido") {
+          partes.push(`Partido: ${seleccion.nombre_partido || seleccion.cod_partido}${circ}`);
+        } else if (seleccion.tipo === "candidato") {
+          partes.push(`Candidato: ${seleccion.nombre_candidato || ""} · Tarjetón #${seleccion.num_lista} · Partido: ${seleccion.nombre_partido || seleccion.cod_partido}${circ}`);
+        }
+      }
+      if (cod_vota) partes.push(`Folio de voto: ${cod_vota}`);
+      el.textContent = partes.join(" | ");
+    })();
+
+    const btnDesc = document.getElementById("btnDescargar");
+    const btnSalir = document.getElementById("btnSalir");
+    const msg = document.getElementById("msg");
+
+    function setMsg(text, kind="info"){
+      msg.className = `alert alert-${kind}`;
+      msg.textContent = text;
+    }
+
+    // Descargar certificado
+    btnDesc?.addEventListener("click", async ()=>{
+      setMsg("Generando certificado…", "secondary");
+      btnDesc.disabled = true;
+
+      try{
+        // enviamos datos mínimos para el certificado
+        const payload = {
+          id_elector: elector.id_elector,
+          nombres: elector.nombres,
+          codigo_dane: elector.codigo_dane,
+          cod_vota: cod_vota || null,
+          seleccion: seleccion || null
+        };
+
+        const res = await fetch(`${API_URL}/certificado`, {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(()=>({}));
+          setMsg(data.message || "No fue posible generar el certificado.", "danger");
+          btnDesc.disabled = false;
+          return;
+        }
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const filename = `certificado_votacion_${elector.id_elector}.pdf`;
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click();
+        a.remove(); window.URL.revokeObjectURL(url);
+
+        // Marca que descargó
+        sessionStorage.setItem("cert_descargado","1");
+        setMsg("Certificado descargado correctamente. Ya puedes salir.", "success");
+        btnSalir.disabled = false;
+
+      }catch(e){
+        console.error(e);
+        setMsg("Error al generar/descargar el certificado.", "danger");
+        btnDesc.disabled = false;
+      }
+    });
+
+    // Salir (solo si descargó)
+    btnSalir?.addEventListener("click", ()=>{
+      const ok = sessionStorage.getItem("cert_descargado")==="1";
+      if (!ok) {
+        setMsg("Debes descargar el certificado antes de salir.", "warning");
+        return;
+      }
+      // Limpia sesión de elector y selección
+      sessionStorage.removeItem("elector");
+      sessionStorage.removeItem("seleccion_voto");
+      sessionStorage.removeItem("cert_descargado");
+      window.location.replace("/");
+    });
+  </script>
+</body>
+</html>

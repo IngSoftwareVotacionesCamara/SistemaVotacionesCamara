@@ -445,10 +445,9 @@ btnVotar?.addEventListener("click", async () => {
     });
     const data = await res.json().catch(()=> ({}));
     if (res.ok) {
-      msgSel.classList.remove("text-danger");
-      msgSel.classList.add("text-success");
-      msgSel.textContent = "✅ Voto registrado. ¡Gracias por participar!";
-      // window.location.href = "/";
+      // Redirige a la página de confirmación con el cod_vota (si lo retornó)
+      const cod = data.cod_vota || "";
+      window.location.assign(`/confirmacion.html?cod_vota=${encodeURIComponent(cod)}`);
     } else {
       msgSel.classList.add("text-danger");
       msgSel.textContent = data.message || `Error al registrar voto (HTTP ${res.status}).`;

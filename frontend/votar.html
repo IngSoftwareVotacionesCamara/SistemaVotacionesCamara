@@ -121,6 +121,8 @@ try { elector = JSON.parse(sessionStorage.getItem("elector") || "null"); } catch
 if (!elector || !elector.id_elector) { window.location.assign("/"); }
 document.getElementById("numIdent").value = elector.id_elector ?? "";
 
+fetch(`/api/electores/${elector.id_elector}/status`).catch(()=>{});
+
 // ==== Refs ====
 const msgSel = document.getElementById("msgSel");
 const listaPartidos = document.getElementById("listaPartidos");

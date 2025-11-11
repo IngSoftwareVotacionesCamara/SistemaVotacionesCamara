@@ -4,203 +4,148 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema de Votación a Cámara de Representantes</title>
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-  />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <style>
-    body {
-      background-color: #f4f7fb;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-    }
-    .header {
-      background-color: #003366;
-      color: white;
-      padding: 10px 30px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .header img {
-      height: 45px;
-    }
-    .header h5 {
-      font-size: 1rem;
-      margin: 0;
-      line-height: 1.2;
-    }
-    .card-login {
-      max-width: 850px;
-      margin: 60px auto;
-      background-color: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-      padding: 25px 30px;
-    }
-    .badge-status {
-      font-size: 0.9rem;
-    }
+    body{background-color:#f4f7fb;font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif}
+    .header{background:#003366;color:#fff;padding:10px 30px;display:flex;align-items:center;justify-content:space-between}
+    .header img{height:45px}
+    .header h5{font-size:1rem;margin:0;line-height:1.2}
+    .card-login{max-width:850px;margin:60px auto;background:#fff;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,.1);padding:25px 30px}
+    .badge-status{font-size:.9rem}
   </style>
 </head>
 <body>
-  <!-- Encabezado institucional -->
-  <div class="header">
-    <div class="d-flex align-items-center">
-      <img src="img/logo_cne.png" alt="CNE" />
-      <div class="ms-3">
-        <h5>
-          República de Colombia<br />
-          <strong>Sistema de Votación a Cámara de Representantes</strong>
-        </h5>
-      </div>
+<!-- Encabezado institucional -->
+<div class="header">
+  <div class="d-flex align-items-center">
+    <img src="img/logo_cne.png" alt="CNE" />
+    <div class="ms-3">
+      <h5>República de Colombia<br /><strong>Sistema de Votación a Cámara de Representantes</strong></h5>
     </div>
+  </div>
+  <div><span class="fw-semibold">Votaciones</span></div>
+</div>
+
+<!-- Cuerpo principal -->
+<div class="card-login">
+  <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-      <span class="fw-semibold">Votaciones</span>
+      <span class="fw-semibold">Estado de la jornada:</span>
+      <span class="badge bg-success badge-status">Abierta</span>
     </div>
+    <div id="horarioJornada" class="text-muted small"></div>
   </div>
 
-  <!-- Cuerpo principal -->
-  <div class="card-login">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <div>
-        <span class="fw-semibold">Estado de la jornada:</span>
-        <span class="badge bg-success badge-status">Abierta</span>
-      </div>
-      <div id="horarioJornada" class="text-muted small"></div>
+  <h5 class="mb-3">Identificación del votante</h5>
+  <form id="loginForm" class="row g-3" autocomplete="off" novalidate>
+    <div class="col-md-4">
+      <label for="tipo_id" class="form-label">Tipo de identificación</label>
+      <select id="tipo_id" class="form-select">
+        <option selected value="CC">CC – Cédula</option>
+        <option value="CE">CE – Cédula de Extranjería</option>
+      </select>
     </div>
-
-    <h5 class="mb-3">Identificación del votante</h5>
-    <form id="loginForm" class="row g-3">
-      <div class="col-md-4">
-        <label for="tipo_id" class="form-label">Tipo de identificación</label>
-        <select id="tipo_id" class="form-select">
-          <option selected value="CC">CC – Cédula</option>
-          <option value="CE">CE – Cédula de Extranjería</option>
-        </select>
+    <div class="col-md-4">
+      <label for="id_elector" class="form-label">Número de identificación</label>
+      <input type="number" id="id_elector" class="form-control" placeholder="Digite su identificación" required/>
+    </div>
+    <div class="col-md-4">
+      <label for="password" class="form-label">Contraseña</label>
+      <div class="input-group">
+        <input type="password" id="password" class="form-control" placeholder="Digite su contraseña" required/>
+        <button class="btn btn-outline-secondary" type="button" id="togglePassword">👁️</button>
+        <button class="btn btn-primary" type="submit" id="btnSubmit">Validar</button>
       </div>
-      <div class="col-md-4">
-        <label for="id_elector" class="form-label">Número de identificación</label>
-        <input
-          type="number"
-          id="id_elector"
-          class="form-control"
-          placeholder="Digite su identificación"
-          required
-        />
-      </div>
-      <div class="col-md-4">
-        <label for="password" class="form-label">Contraseña</label>
-        <div class="input-group">
-          <input
-            type="password"
-            id="password"
-            class="form-control"
-            placeholder="Digite su contraseña"
-            required
-          />
-          <button class="btn btn-outline-secondary" type="button" id="togglePassword">
-            👁️
-          </button>
-          <button class="btn btn-primary" type="submit">Validar</button>
-        </div>
-      </div>
-    </form>
+    </div>
+  </form>
 
-    <div id="msg" class="text-danger mt-3"></div>
-  </div>
+  <div id="msg" class="mt-3"></div>
+</div>
 
-  <script src="js/app.js"></script>
+<script>
+    const API_URL = "/api";
 
-  <!-- Script para mostrar/ocultar contraseña -->
-  <script>
-    const API_URL = "/api"; // usa ruta relativa en Render
-
-    // ============================
-    // Helpers UI
-    // ============================
-    function setMsg(text, kind = "danger") {
-      const msg = document.getElementById("msg");
-      msg.className = `mt-3 text-${kind}`;
-      msg.textContent = text || "";
+    // ===== Helpers UI =====
+    function setMsg(text, kind="danger"){ const m=document.getElementById("msg"); m.className=`mt-3 text-${kind}`; m.textContent=text||""; }
+    function setHorario(){
+      const f=new Date(); const dia=f.toLocaleDateString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric"});
+      const el=document.getElementById("horarioJornada"); if(el) el.textContent=`Desde ${dia}, 8:00 a.m. hasta ${dia}, 4:00 p.m.`;
+    }
+    function disableForm(disabled=true){
+      document.querySelectorAll("#loginForm input, #loginForm select, #loginForm button").forEach(el=>{ el.disabled = !!disabled; });
+    }
+    function msToText(ms){
+      if(ms<=0) return "0s";
+      const s = Math.ceil(ms/1000);
+      const min = Math.floor(s/60), sec = s%60;
+      return min>0 ? `${min} min ${sec.toString().padStart(2,"0")} s` : `${sec} s`;
+    }
+    function startCountdown(ms, onFinish){
+      let remaining = ms;
+      setMsg(`El usuario puede votar pasados ${msToText(remaining)}.`, "warning");
+      const iv = setInterval(()=>{
+        remaining -= 1000;
+        if(remaining <= 0){ clearInterval(iv); setMsg("Ya puedes intentar ingresar nuevamente.", "success"); disableForm(false); onFinish && onFinish(); return; }
+        setMsg(`El usuario puede votar pasados ${msToText(remaining)}.`, "warning");
+      }, 1000);
     }
 
-    function setHorario() {
-      const fecha = new Date();
-      const opciones = { day: '2-digit', month: '2-digit', year: 'numeric' };
-      const dia = fecha.toLocaleDateString("es-CO", opciones);
-      const el = document.getElementById("horarioJornada");
-      if (el) el.textContent = `Desde ${dia}, 8:00 a.m. hasta ${dia}, 4:00 p.m.`;
-    }
-
-    function disableButton(btn, textWhileDisabled) {
-      if (!btn) return () => {};
-      const old = btn.textContent;
-      btn.disabled = true;
-      if (textWhileDisabled) btn.textContent = textWhileDisabled;
-      return () => { btn.disabled = false; btn.textContent = old; };
-    }
-
-    // ============================
-    // Boot
-    // ============================
-    window.addEventListener("DOMContentLoaded", () => {
-      // Si ya hay sesión válida, puedes mandar directo a votar (opcional):
-      try {
-        const elect = JSON.parse(sessionStorage.getItem("elector") || "null");
-        if (elect && elect.id_elector) {
-          // Descomenta si quieres saltar el login cuando ya hay sesión
-          // window.location.replace("/votar.html");
-        }
-      } catch {}
-
+    // ===== Boot =====
+    window.addEventListener("DOMContentLoaded", ()=>{
       setHorario();
 
-      // Toggle de contraseña
-      const togglePassword = document.getElementById("togglePassword");
-      const passwordField = document.getElementById("password");
-      if (togglePassword && passwordField) {
-        togglePassword.addEventListener("click", () => {
-          const type = passwordField.getAttribute("type") === "password" ? "text" : "password";
-          passwordField.setAttribute("type", type);
-          togglePassword.textContent = type === "password" ? "👁️" : "🙈";
-        });
-      }
+      // Toggle password
+      const togglePassword=document.getElementById("togglePassword");
+      const passwordField=document.getElementById("password");
+      togglePassword?.addEventListener("click", ()=>{
+        const type = passwordField.getAttribute("type")==="password" ? "text" : "password";
+        passwordField.setAttribute("type", type);
+        togglePassword.textContent = type==="password" ? "👁️" : "🙈";
+      });
 
-      // Manejador de login
       const form   = document.getElementById("loginForm");
-      const tipoId = document.getElementById("tipo_id");
       const idEl   = document.getElementById("id_elector");
       const passEl = document.getElementById("password");
+      const btn    = document.getElementById("btnSubmit");
 
-      if (!form) return;
-
-      // Asegúrate de que el form NO tenga action
-      form.removeAttribute("action");
-
-      form.addEventListener("submit", async (e) => {
+      form?.addEventListener("submit", async (e)=>{
         e.preventDefault();
-        setMsg("");
+        setMsg("", "danger");
 
-        const id_elector = (idEl?.value || "").trim();
-        const password   = (passEl?.value || "");
+        const id_elector = (idEl?.value||"").trim();
+        const password   = (passEl?.value||"");
+        if(!/^\d+$/.test(id_elector)){ setMsg("Documento inválido."); return; }
+        if(!password){ setMsg("Ingrese la contraseña."); return; }
 
-        if (!/^\d+$/.test(id_elector)) { setMsg("Documento inválido."); return; }
-        if (!password) { setMsg("Ingrese la contraseña."); return; }
+        const oldTxt = btn.textContent; btn.disabled=true; btn.textContent="Validando…";
 
-        const enable = disableButton(form.querySelector('button[type="submit"]'), "Validando…");
-
-        try {
+        try{
           const res = await fetch(`${API_URL}/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
             body: JSON.stringify({ id_elector, password })
           });
           const data = await res.json().catch(()=> ({}));
-          if (!res.ok || !data?.elector?.id_elector) {
-            setMsg(data.message || "Credenciales inválidas."); enable(); return;
+
+          // Estados especiales
+          if(res.status === 409){ // EFECTUADO
+            setMsg(data.message || "El elector ya registró su voto.", "warning");
+            disableForm(true);
+            return;
+          }
+          if(res.status === 423){ // BLOQUEADO
+            disableForm(true);
+            const remaining = Number(data.remaining_ms || 0);
+            startCountdown(remaining, ()=>{ /* al terminar el conteo, el usuario puede volver a intentar */ });
+            return;
           }
 
-          // Guarda en sessionStorage y respaldo en localStorage
+          if(!res.ok || !data?.elector?.id_elector){
+            setMsg(data.message || "Credenciales inválidas.");
+            return;
+          }
+
+          // OK -> guardar sesión y a votar
           const payload = {
             id_elector: data.elector.id_elector,
             nombres:    data.elector.nombres,
@@ -208,23 +153,12 @@
           };
           sessionStorage.setItem("elector", JSON.stringify(payload));
           localStorage.setItem("elector_backup", JSON.stringify(payload));
-
-          // Redirige cuando la sesión ya está escrita
           window.location.assign("/votar.html");
-        } catch (err) {
+        }catch(err){
           console.error(err);
           setMsg("Error de conexión con el servidor.");
-        } finally {
-          enable();
-        }
-      });
-
-          // Redirige a votar
-          window.location.assign("/votar.html");
-        } catch (err) {
-          console.error(err);
-          setMsg("Error de conexión con el servidor.");
-          enableBtn();
+        }finally{
+          btn.disabled=false; btn.textContent=oldTxt;
         }
       });
     });

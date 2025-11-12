@@ -13,6 +13,7 @@ import electoresRouter from "./routes/electores.js";
 import certificadoRouter from "./routes/certificado.js";
 import adminRouter from "./routes/admin.js";
 import estadoRouter from "./routes/estado.js";
+import resultadosRouter from "./routes/resultados.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -54,6 +55,7 @@ app.use("/api",        electoresRouter);
 app.use("/api",        certificadoRouter);
 app.use("/api/estado", estadoRouter);
 app.use("/api/admin",  adminRouter);
+app.use("/api/resultados", resultadosRouter);
 
 // Páginas
 app.get("/",            (_req,res)=>res.sendFile(path.join(__dirname,"../frontend/index.html")));

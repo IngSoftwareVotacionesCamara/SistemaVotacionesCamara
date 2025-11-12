@@ -1,39 +1,46 @@
-// frontend/js/certificado.js
 (function () {
-  // 1) Verifica que jsPDF esté cargado
+  // 1) Verifica que jsPDF esté disponible
   const jspdf = window.jspdf || window.jspdf?.default;
   const jsPDF = window.jspdf?.jsPDF || jspdf?.jsPDF;
   if (!jsPDF) {
-    console.error("jsPDF no está disponible. Revisa el <script> del CDN.");
+    console.error("jsPDF no está disponible. Revisa el <script> del CDN en confirmacion.html");
     return;
   }
 
-  // 2) Logos en Base64 para evitar CORS (pon los tuyos si quieres)
-  // Mini logo CNE (placeholder; reemplaza por el tuyo en base64 si deseas mejor calidad)
-  const LOGO_CNE =
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAA..."; // <-- pon tu base64 real
-
-  const FIRMA =
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAA..."; // <-- opcional
-
-  // 3) Exporta la función global que usa confirmacion.html
+  // 2) Exporta la función global usada en confirmacion.html
   window.generarCertificado = async function generarCertificado(elector) {
     if (!elector || !elector.id_elector) {
       throw new Error("Elector inválido o sesión expirada.");
     }
 
-    const doc = new jsPDF({ unit: "pt", format: "letter" }); // 612x792
-
+    // Configura documento
+    const doc = new jsPDF({ unit: "pt", format: "letter" });
     const pageW = doc.internal.pageSize.getWidth();
+
+    // Función segura de texto
     const safeText = (t) => String(t ?? "").toString();
 
-    // Encabezado con logo/leyenda
+    // Carga imágenes desde rutas locales (frontend/img)
+    const logoURL = "img/CNE_logo.png";
+    const firmaURL = "img/firma_cne.png";
+
+    // Función para cargar imagen y convertirla a Base64 (por CORS)
+    async function cargarImagen(url) {
+      const resp = await fetch(url);
+      const blob = await resp.blob();
+      return await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    // Encabezado
     try {
-      if (LOGO_CNE && LOGO_CNE.startsWith("data:image/")) {
-        doc.addImage(LOGO_CNE, "PNG", pageW - 180, 40, 120, 48);
-      }
+      const logo = await cargarImagen(logoURL);
+      doc.addImage(logo, "PNG", pageW - 180, 40, 120, 48);
     } catch (e) {
-      console.warn("No se pudo dibujar el logo:", e);
+      console.warn("No se pudo cargar el logo:", e);
     }
 
     doc.setFont("helvetica", "bold");
@@ -50,7 +57,7 @@
     doc.setFontSize(22);
     doc.text("Certificado de Votación", pageW / 2, 195, { align: "center" });
 
-    // Cuerpo (sin datos del voto)
+    // Cuerpo
     const nombre = safeText(elector.nombres);
     const cedula = safeText(elector.id_elector);
     const fechaEleccion = new Date().toLocaleDateString("es-CO", {
@@ -80,13 +87,12 @@
       y += 24;
     });
 
-    // Firma (opcional)
+    // Firma
     try {
-      if (FIRMA && FIRMA.startsWith("data:image/")) {
-        doc.addImage(FIRMA, "PNG", 72, y + 10, 150, 50);
-      }
+      const firma = await cargarImagen(firmaURL);
+      doc.addImage(firma, "PNG", 72, y + 10, 150, 50);
     } catch (e) {
-      console.warn("No se pudo dibujar la firma:", e);
+      console.warn("No se pudo cargar la firma:", e);
     }
     y += 75;
 
@@ -106,7 +112,7 @@
       { align: "center" }
     );
 
-    // Descarga
+    // Descarga PDF
     const filename = `certificado_votacion_${cedula}.pdf`;
     doc.save(filename);
   };

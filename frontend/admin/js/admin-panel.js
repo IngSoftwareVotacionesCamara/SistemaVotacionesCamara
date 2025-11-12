@@ -1,166 +1,254 @@
 // frontend/admin/js/admin-panel.js
 const API_ADMIN  = "/api/admin";
-const API_ESTADO = "/api/estado/jornada"; // tu endpoint público de estado
+const API_ESTADO = "/api/estado/jornada";
 
-const $ = (sel)=>document.querySelector(sel);
+let countdownTimer = null;
 
-function toLocalInput(ts){
-  if(!ts) return "";
+function clearCountdown() {
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
+}
+
+function toLocalInput(ts) {
+  if (!ts) return "";
   const d = new Date(ts);
-  const pad = n => String(n).padStart(2,"0");
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function msToStr(ms){
-  if(ms <= 0) return "0 s";
-  let s = Math.floor(ms/1000);
-  const d = Math.floor(s/86400); s -= d*86400;
-  const h = Math.floor(s/3600); s -= h*3600;
-  const m = Math.floor(s/60);   s -= m*60;
-  const parts=[];
-  if(d) parts.push(`${d} d`);
-  if(h) parts.push(`${h} h`);
-  if(m) parts.push(`${m} min`);
-  if(s) parts.push(`${s} s`);
-  return parts.join(" ");
-}
+function renderEstado(info) {
+  const badge        = document.getElementById("estadoBadge");
+  const txt          = document.getElementById("estadoText");
+  const flash        = document.getElementById("flash");
+  const form         = document.getElementById("frmJornada");
+  const btnRecalcular = document.getElementById("btnRecalcular");
 
-let countdownIv = null;
-function setFlashOk(inicio, fin, estado){
-  const box = $("#flash");
-  if(!box) return;
+  clearCountdown();
 
-  const di = inicio ? new Date(inicio) : null;
-  const df = fin    ? new Date(fin)    : null;
-
-  let html = `<div class="alert alert-success py-2 mb-2">
-    <div><strong>Jornada de votación configurada</strong>${di && df ? ` desde <b>${di.toLocaleString("es-CO")}</b> hasta <b>${df.toLocaleString("es-CO")}</b>.` : "."}</div>
-    <div class="mt-1" id="countdown"></div>
-  </div>`;
-
-  box.innerHTML = html;
-
-  const cd = $("#countdown");
-  if(countdownIv){ clearInterval(countdownIv); countdownIv = null; }
-
-  function tick(){
-    const now = Date.now();
-    if(di && now < di.getTime()){
-      cd.textContent = `La jornada empezará en ${msToStr(di.getTime()-now)}.`;
-    } else if(di && df && now >= di.getTime() && now <= df.getTime()){
-      cd.textContent = `Jornada en curso. Quedan ${msToStr(df.getTime()-now)}.`;
-    } else if(df && now > df.getTime()){
-      cd.textContent = "Jornada cerrada. Ya puedes calcular los resultados.";
-    } else {
-      cd.textContent = "Configura inicio y fin para habilitar la jornada.";
+  if (!info) {
+    if (badge) badge.className = "badge bg-secondary";
+    if (badge) badge.textContent = "—";
+    if (txt)   txt.textContent = "";
+    if (flash) {
+      flash.className = "alert alert-info mt-2";
+      flash.textContent = "No se pudo obtener el estado de la jornada.";
     }
+    if (btnRecalcular) btnRecalcular.disabled = true;
+    return;
   }
-  tick();
-  countdownIv = setInterval(tick, 1000);
 
-  // habilitar/inhabilitar botón “Recalcular resultados”
-  const btnRecalc = $("#btnRecalcular");
-  if(btnRecalc){
-    const now = Date.now();
-    const cerrada = df && now > new Date(df).getTime();
-    btnRecalc.disabled = !cerrada;
+  const inicio = info.inicio ? new Date(info.inicio) : null;
+  const fin    = info.fin ? new Date(info.fin) : null;
+  const ahora  = info.ahora ? new Date(info.ahora) : new Date();
+
+  const inicioStr = inicio ? inicio.toLocaleString("es-CO") : null;
+  const finStr    = fin ? fin.toLocaleString("es-CO") : null;
+
+  if (!inicio || !fin) {
+    // SIN CONFIGURAR
+    if (badge) {
+      badge.className = "badge bg-secondary";
+      badge.textContent = "Sin jornada";
+    }
+    if (txt) txt.textContent = "No hay una jornada de votación configurada.";
+    if (flash) {
+      flash.className = "alert alert-info mt-2";
+      flash.textContent = "Configura una nueva jornada de votación usando el formulario.";
+    }
+    if (form) form.classList.remove("d-none");
+    if (btnRecalcular) btnRecalcular.disabled = true;
+    return;
   }
-}
 
-function setEstadoBadge(info){
-  const badge = $("#estadoBadge");
-  const txt   = $("#estadoText");
-  if(!badge || !txt) return;
+  // ya hay inicio y fin, vemos estado
+  const estado = info.estado || (info.abierta ? "abierta" : "cerrada");
 
-  if(!info){ badge.textContent="—"; badge.className="badge bg-secondary"; txt.textContent=""; return; }
+  if (estado === "abierta") {
+    // JORNADA ABIERTA: ocultar formulario, deshabilitar recálculo
+    if (badge) {
+      badge.className = "badge bg-success";
+      badge.textContent = "Abierta";
+    }
+    if (txt) txt.textContent = `Cierra: ${finStr}`;
+    if (form) form.classList.add("d-none");
+    if (btnRecalcular) btnRecalcular.disabled = true;
 
-  if(info.abierta){
-    badge.textContent = "Abierta";
-    badge.className   = "badge bg-success";
-    txt.textContent   = `Cierra: ${new Date(info.fin).toLocaleString("es-CO")}`;
+    if (flash) {
+      flash.className = "alert alert-success mt-2";
+      flash.innerHTML =
+        `Jornada de votación configurada desde <strong>${inicioStr}</strong> hasta <strong>${finStr}</strong>.<br>` +
+        `<span id="countdownLabel"></span>`;
+    }
+
+    const label = document.getElementById("countdownLabel");
+    if (label) {
+      countdownTimer = setInterval(() => {
+        const ms = fin - new Date();
+        if (ms <= 0) {
+          clearCountdown();
+          label.textContent = "La jornada está finalizando...";
+          // recargar para que pase a 'cerrada'
+          window.location.reload();
+          return;
+        }
+        const mins = Math.floor(ms / 60000);
+        const secs = Math.floor((ms % 60000) / 1000);
+        label.textContent = `La jornada finalizará en ${mins} min ${secs
+          .toString()
+          .padStart(2, "0")} s.`;
+      }, 1000);
+    }
+  } else if (estado === "no_iniciada") {
+    // JORNADA CONFIGURADA, AÚN NO EMPIEZA
+    if (badge) {
+      badge.className = "badge bg-warning text-dark";
+      badge.textContent = "Programada";
+    }
+    if (txt) txt.textContent = `Inicio programado: ${inicioStr}`;
+    if (form) form.classList.remove("d-none");
+    if (btnRecalcular) btnRecalcular.disabled = true;
+
+    if (flash) {
+      flash.className = "alert alert-info mt-2";
+      flash.innerHTML =
+        `Jornada de votación configurada desde <strong>${inicioStr}</strong> hasta <strong>${finStr}</strong>.<br>` +
+        `<span id="countdownLabel"></span>`;
+    }
+
+    const label = document.getElementById("countdownLabel");
+    if (label) {
+      countdownTimer = setInterval(() => {
+        const ms = inicio - new Date();
+        if (ms <= 0) {
+          clearCountdown();
+          label.textContent = "La jornada está por comenzar...";
+          window.location.reload();
+          return;
+        }
+        const mins = Math.floor(ms / 60000);
+        const secs = Math.floor((ms % 60000) / 1000);
+        label.textContent = `La jornada empezará en ${mins} min ${secs
+          .toString()
+          .padStart(2, "0")} s.`;
+      }, 1000);
+    }
   } else {
-    badge.textContent = "Cerrada";
-    badge.className   = "badge bg-danger";
-    txt.textContent   = info.inicio ? `Abrió: ${new Date(info.inicio).toLocaleString("es-CO")}` : "";
+    // CERRADA (estado === "cerrada" o "sin_configurar" con fechas)
+    if (badge) {
+      badge.className = "badge bg-danger";
+      badge.textContent = "Cerrada";
+    }
+    if (txt) txt.textContent = "La jornada ya finalizó.";
+    if (form) form.classList.remove("d-none");
+
+    if (flash) {
+      flash.className = "alert alert-success mt-2";
+      flash.textContent =
+        `Jornada de votación configurada desde ${inicioStr} hasta ${finStr}.`;
+    }
+    if (btnRecalcular) btnRecalcular.disabled = false;
   }
 }
 
-async function cargar(){
-  // si no hay sesión, 401 → volver al login
-  const r1 = await fetch(`${API_ADMIN}/jornada`, { credentials: "include" });
-  if(r1.status === 401){ location.replace("/admin/login.html"); return; }
+async function cargar() {
+  try {
+    // Obtenemos estado general (incluye inicio/fin)
+    const r = await fetch(API_ESTADO);
+    const info = await r.json();
 
-  const jor = await r1.json().catch(()=> ({}));
-  $("#inicio").value = toLocalInput(jor.inicio);
-  $("#fin").value    = toLocalInput(jor.fin);
+    // Llenamos los inputs con las fechas actuales (si existen)
+    if (info && info.inicio) {
+      document.getElementById("inicio").value = toLocalInput(info.inicio);
+    } else {
+      document.getElementById("inicio").value = "";
+    }
+    if (info && info.fin) {
+      document.getElementById("fin").value = toLocalInput(info.fin);
+    } else {
+      document.getElementById("fin").value = "";
+    }
 
-  // estado público
-  const r2 = await fetch(API_ESTADO);
-  const est = await r2.json().catch(()=> ({}));
-  setEstadoBadge(est);
-
-  // flash + countdown + habilitar recálculo
-  setFlashOk(jor.inicio, jor.fin, est);
+    renderEstado(info);
+  } catch (err) {
+    console.error("Error cargando estado jornada:", err);
+    renderEstado(null);
+  }
 }
 
 // Guardar jornada
-$("#frmJornada")?.addEventListener("submit", async (e)=>{
+document.getElementById("frmJornada")?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  $("#msg").textContent = "";
+  const msg = document.getElementById("msg");
+  if (msg) msg.textContent = "";
 
-  const inicio = $("#inicio").value;
-  const fin    = $("#fin").value;
+  const inicio = document.getElementById("inicio").value;
+  const fin    = document.getElementById("fin").value;
 
-  try{
+  if (!inicio || !fin) {
+    if (msg) msg.textContent = "Inicio y fin son obligatorios.";
+    return;
+  }
+
+  try {
     const r = await fetch(`${API_ADMIN}/jornada`, {
-      method:"PUT",
-      headers:{ "Content-Type":"application/json" },
-      credentials:"include",
-      body: JSON.stringify({ inicio, fin })
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ inicio, fin }),
     });
-    const data = await r.json().catch(()=> ({}));
-    if(!r.ok){ $("#msg").textContent = data.message || "Error al guardar"; return; }
-
-    // refrescar UI y mostrar “flash”
-    setFlashOk(data.inicio, data.fin);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      if (msg) msg.textContent = data.message || "Error al guardar la jornada.";
+      return;
+    }
     await cargar();
-  }catch(err){
-    $("#msg").textContent = "Error de conexión";
+  } catch (err) {
+    console.error(err);
+    if (msg) msg.textContent = "Error de conexión al guardar.";
   }
 });
 
-// Cerrar ahora
-$("#btnCerrarAhora")?.addEventListener("click", async ()=>{
-  const r = await fetch(`${API_ADMIN}/jornada/cerrar_ahora`, {
-    method:"POST", credentials:"include"
-  });
-  if(r.ok) await cargar();
+// Recalcular resultados (stub)
+document.getElementById("btnRecalcular")?.addEventListener("click", async () => {
+  const out = document.getElementById("msgRes");
+  if (out) out.textContent = "";
+  try {
+    const r = await fetch(`${API_ADMIN}/resultados/recalcular`, {
+      method: "POST",
+      credentials: "include",
+    });
+    const data = await r.json().catch(() => ({}));
+    if (out) out.textContent = data.message || "Recalculo disparado (stub).";
+  } catch (err) {
+    console.error(err);
+    if (out) out.textContent = "Error de conexión al recalcular.";
+  }
 });
 
-// Recalcular (stub)
-$("#btnRecalcular")?.addEventListener("click", async ()=>{
-  const r = await fetch(`${API_ADMIN}/resultados/recalcular`, {
-    method:"POST", credentials:"include"
-  });
-  const data = await r.json().catch(()=> ({}));
-  $("#msgRes").textContent = data.message || "OK";
-});
-
-// Cerrar sesión (lo dejamos aunque ahora te concentras en jornada)
-$("#btnLogout")?.addEventListener("click", async ()=>{
-  try{
-    const r = await fetch(`${API_ADMIN}/logout`, { method:"POST", credentials:"include" });
-    const d = await r.json().catch(()=> ({}));
-    if(r.ok && d.ok){
-      try { sessionStorage.clear(); localStorage.clear(); } catch {}
-      location.replace("/admin/login.html");
-    }else{
-      alert(d.message || "No se pudo cerrar sesión.");
+// Cerrar sesión (aunque de momento esté medio rebelde lo dejamos igual)
+document.getElementById("btnLogout")?.addEventListener("click", async () => {
+  try {
+    const res = await fetch(`${API_ADMIN}/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.ok) {
+      try {
+        sessionStorage.clear();
+        localStorage.clear();
+      } catch {}
+      window.location.replace("/admin/login.html");
+    } else {
+      alert(data.message || "No se pudo cerrar sesión.");
     }
-  }catch(e){
+  } catch (err) {
+    console.error("Logout error:", err);
     alert("Error de conexión al cerrar sesión.");
   }
 });
 
-// boot
-cargar();
+// Cargar estado al inicio
+window.addEventListener("DOMContentLoaded", cargar);

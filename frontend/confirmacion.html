@@ -60,10 +60,11 @@
     </div>
 </div>
 
-<!-- jsPDF + generador del certificado (frontend/js/certificado.js) -->
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
-<script src="js/certificado.js" defer></script>
 
+<!-- jsPDF primero -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
+<!-- TU generador (el de frontend/js/certificado.js) -->
+<script src="js/certificado.js?v=2" defer></script>
 <script>
     window.addEventListener('DOMContentLoaded', () => {
       // ===== Estado (elector en sesión) =====
@@ -84,28 +85,45 @@
       const btnSalir  = document.getElementById("btnSalir");
       const alertCert = document.getElementById("alertCert");
 
-      // Descarga certificado → habilita "Salir" (azul)
-      btnCert?.addEventListener("click", async () => {
-        try {
-          // función exportada por frontend/js/certificado.js
-          await window.generarCertificado(elector);
-          sessionStorage.setItem("cert_descargado", "1");
+        // Descarga certificado → habilita "Salir" (azul)
+        btnCert?.addEventListener("click", async () => {
+          // defensa extra: elector y función disponibles
+          if (!elector || !elector.id_elector) {
+            alertCert.className = "alert alert-danger py-2 px-3 mb-3";
+            alertCert.textContent = "Sesión expirada. Vuelve al inicio.";
+            return;
+          }
+          if (typeof window.generarCertificado !== "function") {
+            console.error("generarCertificado no está disponible (revisa js/certificado.js).");
+            alertCert.className = "alert alert-danger py-2 px-3 mb-3";
+            alertCert.textContent = "No se pudo generar el certificado. Recarga la página (Ctrl+F5).";
+            return;
+          }
 
-          alertCert.className = "alert alert-success py-2 px-3 mb-3";
-          alertCert.textContent = "Certificado descargado correctamente. Ya puedes salir.";
-
-          btnSalir.disabled = false;
-          btnSalir.classList.remove("btn-outline-secondary");
-          btnSalir.classList.add("btn-primary", "text-white");
-
-          // Evita descargas duplicadas
+          // evita clics repetidos mientras genera
           btnCert.disabled = true;
-        } catch (e) {
-          console.error(e);
-          alertCert.className = "alert alert-danger py-2 px-3 mb-3";
-          alertCert.textContent = "No se pudo generar el certificado. Intenta nuevamente.";
-        }
-      });
+
+          try {
+            await window.generarCertificado(elector);
+
+            sessionStorage.setItem("cert_descargado", "1");
+            alertCert.className = "alert alert-success py-2 px-3 mb-3";
+            alertCert.textContent = "Certificado descargado correctamente. Ya puedes salir.";
+
+            btnSalir.disabled = false;
+            btnSalir.classList.remove("btn-outline-secondary");
+            btnSalir.classList.add("btn-primary", "text-white");
+
+            // si quieres impedir descargas duplicadas, lo dejamos deshabilitado
+            // btnCert.disabled = true;
+          } catch (e) {
+            console.error(e);
+            alertCert.className = "alert alert-danger py-2 px-3 mb-3";
+            alertCert.textContent = "No se pudo generar el certificado. Intenta nuevamente.";
+            // re-habilita para reintento
+            btnCert.disabled = false;
+          }
+        });
 
       // Salir sólo si descargó certificado
       btnSalir?.addEventListener("click", () => {

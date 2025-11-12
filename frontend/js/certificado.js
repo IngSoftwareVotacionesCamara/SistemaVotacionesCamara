@@ -42,7 +42,7 @@ export async function descargarCertificado(elector) {
   //  - /img/firma_cne.png         (firma manuscrita)
   let logo, firma;
   try {
-    logo  = await loadImg("/img/cne_logo_grande.png");
+    logo  = await loadImg("/img/CNE_logo.png");
   } catch { /* fallback: sin logo */ }
   try {
     firma = await loadImg("/img/firma_cne.png");

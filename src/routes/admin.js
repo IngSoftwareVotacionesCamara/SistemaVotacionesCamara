@@ -64,37 +64,59 @@ router.post("/logout", (req, res) => {
 
 /* -------- JORNADA -------- */
 router.get("/jornada", requireAdmin, async (_req, res) => {
-  const q = `SELECT inicio, fin, updated_at FROM votaciones.jornada WHERE id=1`;
-  const r = await pool.query(q);
-  if (!r.rowCount) return res.json({ inicio: null, fin: null, updated_at: null });
-  res.json(r.rows[0]);
+  try {
+    const q = `
+      SELECT
+        inicio::text AS inicio,
+        fin::text    AS fin
+      FROM votaciones.jornada
+      WHERE id = 1
+    `;
+    const r = await pool.query(q);
+
+    if (!r.rowCount) {
+      // No hay fila configurada
+      return res.json({ inicio: null, fin: null });
+    }
+
+    const { inicio, fin } = r.rows[0];
+    return res.json({ inicio, fin });
+  } catch (e) {
+    console.error("ADMIN JORNADA GET ERROR:", e);
+    return res.status(500).json({ message: "Error al obtener jornada" });
+  }
 });
 
+// PUT actualizar
 router.put("/jornada", requireAdmin, async (req, res) => {
-  const { inicio, fin } = req.body || {};
-  if (!inicio || !fin) return res.status(400).json({ message: "inicio y fin son obligatorios" });
-  const q = `
-    INSERT INTO votaciones.jornada (id, inicio, fin, updated_at)
-    VALUES (
-      1,
-      ($1::timestamptz),
-      ($2::timestamptz),
-      now()
-    )
-    ON CONFLICT (id) DO UPDATE SET
-      inicio = EXCLUDED.inicio,
-      fin    = EXCLUDED.fin,
-      updated_at = now()
-    RETURNING inicio, fin, updated_at;
-  `;
-  const r = await pool.query(q, [inicio, fin]);
-  res.json(r.rows[0]);
-});
+  try {
+    const { inicio, fin } = req.body || {};
 
-router.post("/jornada/cerrar_ahora", requireAdmin, async (_req, res) => {
-  const q = `UPDATE votaciones.jornada SET fin = now(), updated_at = now() WHERE id=1 RETURNING inicio, fin`;
-  const r = await pool.query(q);
-  res.json(r.rows[0] || {});
+    if (!inicio || !fin) {
+      return res.status(400).json({ message: "inicio y fin son obligatorios" });
+    }
+
+    const q = `
+      INSERT INTO votaciones.jornada (id, inicio, fin, updated_at)
+      VALUES (1, $1::timestamp, $2::timestamp, now())
+      ON CONFLICT (id) DO UPDATE
+        SET inicio    = EXCLUDED.inicio,
+            fin       = EXCLUDED.fin,
+            updated_at = now()
+      RETURNING
+        inicio::text AS inicio,
+        fin::text    AS fin;
+    `;
+
+    const r = await pool.query(q, [inicio, fin]);
+    const { inicio: outInicio, fin: outFin } = r.rows[0];
+
+    // devolvemos exactamente lo que quedó en la BD
+    return res.json({ inicio: outInicio, fin: outFin });
+  } catch (e) {
+    console.error("ADMIN JORNADA PUT ERROR:", e);
+    return res.status(500).json({ message: "Error al guardar jornada" });
+  }
 });
 
 /* -------- RESULTADOS (stub) -------- */

@@ -1,283 +1,191 @@
 // frontend/admin/js/admin-panel.js
-const API_ADMIN  = "/api/admin";
-const API_ESTADO = "/api/estado/jornada";
+const API_ADMIN = "/api/admin";
 
-let countdownTimer = null;
+const inicioInput   = document.getElementById("inicio");
+const finInput      = document.getElementById("fin");
+const msgElem       = document.getElementById("msg");
+const flashElem     = document.getElementById("flash");
+const estadoBadge   = document.getElementById("estadoBadge");
+const estadoText    = document.getElementById("estadoText");
+const btnRecalcular = document.getElementById("btnRecalcular");
+const btnLogout     = document.getElementById("btnLogout");
 
-function clearCountdown() {
-  if (countdownTimer) {
-    clearInterval(countdownTimer);
-    countdownTimer = null;
-  }
+/* ------------ helpers de formato ------------ */
+
+// Convierte "2025-11-12T10:36:00.000000" → "2025-11-12T10:36"
+function toInputValue(dbString) {
+  if (!dbString) return "";
+  return dbString.substring(0, 16);
 }
 
-function toLocalInput(ts) {
-  if (!ts) return "";
-  const d = new Date(ts);
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+// Convierte "2025-11-12T10:36" → "12/11/2025, 10:36"
+function prettyFromInput(inputValue) {
+  if (!inputValue) return "";
+  const [datePart, timePart] = inputValue.split("T"); // "YYYY-MM-DD", "HH:MM"
+  const [yyyy, mm, dd] = datePart.split("-");
+  const [hh, min] = timePart.split(":");
+  return `${dd}/${mm}/${yyyy}, ${hh}:${min}`;
 }
 
-function renderEstado(info) {
-  const badge        = document.getElementById("estadoBadge");
-  const txt          = document.getElementById("estadoText");
-  const flash        = document.getElementById("flash");
-  const form         = document.getElementById("frmJornada");
-  const btnRecalcular = document.getElementById("btnRecalcular");
+/* ------------ pintar estado / tarjeta verde ------------ */
 
-  clearCountdown();
+function renderEstado(inicioDb, finDb) {
+  // limpiar
+  flashElem.innerHTML   = "";
+  estadoBadge.textContent = "—";
+  estadoBadge.className   = "badge bg-secondary";
+  estadoText.textContent  = "";
+  if (btnRecalcular) btnRecalcular.disabled = true;
 
-  if (!info) {
-    if (badge) badge.className = "badge bg-secondary";
-    if (badge) badge.textContent = "—";
-    if (txt)   txt.textContent = "";
-    if (flash) {
-      flash.className = "alert alert-info mt-2";
-      flash.textContent = "No se pudo obtener el estado de la jornada.";
-    }
-    if (btnRecalcular) btnRecalcular.disabled = true;
+  if (!inicioDb || !finDb) {
+    estadoText.textContent = "La jornada no está configurada.";
     return;
   }
 
-  const inicio = info.inicio ? new Date(info.inicio) : null;
-  const fin    = info.fin ? new Date(info.fin) : null;
-  const ahora  = info.ahora ? new Date(info.ahora) : new Date();
+  const inicioInputVal = toInputValue(inicioDb);
+  const finInputVal    = toInputValue(finDb);
 
-  const inicioStr = inicio ? inicio.toLocaleString("es-CO") : null;
-  const finStr    = fin ? fin.toLocaleString("es-CO") : null;
+  const inicioNice = prettyFromInput(inicioInputVal);
+  const finNice    = prettyFromInput(finInputVal);
 
-  if (!inicio || !fin) {
-    // SIN CONFIGURAR
-    if (badge) {
-      badge.className = "badge bg-secondary";
-      badge.textContent = "Sin jornada";
-    }
-    if (txt) txt.textContent = "No hay una jornada de votación configurada.";
-    if (flash) {
-      flash.className = "alert alert-info mt-2";
-      flash.textContent = "Configura una nueva jornada de votación usando el formulario.";
-    }
-    if (form) form.classList.remove("d-none");
-    if (btnRecalcular) btnRecalcular.disabled = true;
-    return;
-  }
+  // Tarjeta verde con el rango EXACTO que configuraste
+  flashElem.innerHTML = `
+    <div class="alert alert-success py-2 mb-3">
+      Jornada de votación configurada desde <strong>${inicioNice}</strong>
+      hasta <strong>${finNice}</strong>.
+    </div>
+  `;
 
-  // ya hay inicio y fin, vemos estado
-  const estado = info.estado || (info.abierta ? "abierta" : "cerrada");
+  const ahora      = new Date();
+  const inicioDate = new Date(inicioDb);
+  const finDate    = new Date(finDb);
 
-  if (estado === "abierta") {
-    // JORNADA ABIERTA: ocultar formulario, deshabilitar recálculo
-    if (badge) {
-      badge.className = "badge bg-success";
-      badge.textContent = "Abierta";
-    }
-    if (txt) txt.textContent = `Cierra: ${finStr}`;
-    if (form) form.classList.add("d-none");
-    if (btnRecalcular) btnRecalcular.disabled = true;
-
-    if (flash) {
-      flash.className = "alert alert-success mt-2";
-      flash.innerHTML =
-        `Jornada de votación configurada desde <strong>${inicioStr}</strong> hasta <strong>${finStr}</strong>.<br>` +
-        `<span id="countdownLabel"></span>`;
-    }
-
-    const label = document.getElementById("countdownLabel");
-    if (label) {
-      countdownTimer = setInterval(() => {
-        const ms = fin - new Date();
-        if (ms <= 0) {
-          clearCountdown();
-          label.textContent = "La jornada está finalizando...";
-          // recargar para que pase a 'cerrada'
-          window.location.reload();
-          return;
-        }
-        const mins = Math.floor(ms / 60000);
-        const secs = Math.floor((ms % 60000) / 1000);
-        label.textContent = `La jornada finalizará en ${mins} min ${secs
-          .toString()
-          .padStart(2, "0")} s.`;
-      }, 1000);
-    }
-  } else if (estado === "no_iniciada") {
-    // JORNADA CONFIGURADA, AÚN NO EMPIEZA
-    if (badge) {
-      badge.className = "badge bg-warning text-dark";
-      badge.textContent = "Programada";
-    }
-    if (txt) txt.textContent = `Inicio programado: ${inicioStr}`;
-    if (form) form.classList.remove("d-none");
-    if (btnRecalcular) btnRecalcular.disabled = true;
-
-    if (flash) {
-      flash.className = "alert alert-info mt-2";
-      flash.innerHTML =
-        `Jornada de votación configurada desde <strong>${inicioStr}</strong> hasta <strong>${finStr}</strong>.<br>` +
-        `<span id="countdownLabel"></span>`;
-    }
-
-    const label = document.getElementById("countdownLabel");
-    if (label) {
-      countdownTimer = setInterval(() => {
-        const ms = inicio - new Date();
-        if (ms <= 0) {
-          clearCountdown();
-          label.textContent = "La jornada está por comenzar...";
-          window.location.reload();
-          return;
-        }
-        const mins = Math.floor(ms / 60000);
-        const secs = Math.floor((ms % 60000) / 1000);
-        label.textContent = `La jornada empezará en ${mins} min ${secs
-          .toString()
-          .padStart(2, "0")} s.`;
-      }, 1000);
-    }
+  if (ahora < inicioDate) {
+    estadoBadge.textContent = "Programada";
+    estadoBadge.className   = "badge bg-warning text-dark";
+    estadoText.textContent  = "La jornada aún no inicia.";
+  } else if (ahora >= inicioDate && ahora <= finDate) {
+    estadoBadge.textContent = "Abierta";
+    estadoBadge.className   = "badge bg-success";
+    estadoText.textContent  = "La jornada está en curso.";
   } else {
-    // CERRADA (estado === "cerrada" o "sin_configurar" con fechas)
-    if (badge) {
-      badge.className = "badge bg-danger";
-      badge.textContent = "Cerrada";
-    }
-    if (txt) txt.textContent = "La jornada ya finalizó.";
-    if (form) form.classList.remove("d-none");
-
-    if (flash) {
-      flash.className = "alert alert-success mt-2";
-      flash.textContent =
-        `Jornada de votación configurada desde ${inicioStr} hasta ${finStr}.`;
-    }
+    estadoBadge.textContent = "Cerrada";
+    estadoBadge.className   = "badge bg-danger";
+    estadoText.textContent  = "La jornada ya finalizó.";
     if (btnRecalcular) btnRecalcular.disabled = false;
   }
 }
 
-async function cargar() {
-  try {
-    // Obtenemos estado general (incluye inicio/fin)
-    const r = await fetch(API_ESTADO);
-    const info = await r.json();
+/* ------------ cargar jornada desde el backend ------------ */
 
-    // Llenamos los inputs con las fechas actuales (si existen)
-    if (info && info.inicio) {
-      document.getElementById("inicio").value = toLocalInput(info.inicio);
-    } else {
-      document.getElementById("inicio").value = "";
-    }
-    if (info && info.fin) {
-      document.getElementById("fin").value = toLocalInput(info.fin);
-    } else {
-      document.getElementById("fin").value = "";
-    }
+async function cargarJornada() {
+  msgElem.textContent = "";
 
-    renderEstado(info);
-  } catch (err) {
-    console.error("Error cargando estado jornada:", err);
-    renderEstado(null);
+  const res = await fetch(`${API_ADMIN}/jornada`, {
+    credentials: "include",
+  });
+
+  if (res.status === 401) {
+    // sesión expirada o sin login de admin
+    window.location.replace("/admin/login.html");
+    return;
   }
+
+  const data = await res.json();
+  const { inicio, fin } = data;
+
+  // rellenar inputs exactamente con lo que viene de la BD
+  inicioInput.value = toInputValue(inicio);
+  finInput.value    = toInputValue(fin);
+
+  renderEstado(inicio, fin);
 }
 
-// Guardar jornada
+/* ------------ validación y guardado ------------ */
+
 document.getElementById("frmJornada")?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const msg = document.getElementById("msg");
-  if (msg) msg.textContent = "";
+  msgElem.textContent = "";
 
-  const inicioStr = document.getElementById("inicio").value;
-  const finStr    = document.getElementById("fin").value;
+  const inicio = inicioInput.value; // "YYYY-MM-DDTHH:MM"
+  const fin    = finInput.value;
 
-  if (!inicioStr || !finStr) {
-    if (msg) msg.textContent = "Inicio y fin son obligatorios.";
+  if (!inicio || !fin) {
+    msgElem.textContent = "Debes seleccionar inicio y fin.";
     return;
   }
 
-  const inicio = new Date(inicioStr);
-  const fin    = new Date(finStr);
-  const ahora  = new Date();
+  const ahora      = new Date();
+  const inicioDate = new Date(inicio);
+  const finDate    = new Date(fin);
 
-  // 1) inicio > ahora
-  if (inicio <= ahora) {
-    if (msg) {
-      msg.textContent =
-        "La fecha y hora de inicio deben ser posteriores al momento actual.";
-    }
+  if (inicioDate <= ahora) {
+    msgElem.textContent = "La fecha/hora de inicio debe ser mayor a la hora actual.";
     return;
   }
 
-  // 2) fin > inicio
-  if (fin <= inicio) {
-    if (msg) {
-      msg.textContent =
-        "La fecha y hora de fin deben ser posteriores a la fecha de inicio.";
-    }
+  if (finDate <= inicioDate) {
+    msgElem.textContent = "La fecha/hora de fin debe ser mayor a la de inicio.";
     return;
   }
 
   try {
-    const r = await fetch(`${API_ADMIN}/jornada`, {
+    const res = await fetch(`${API_ADMIN}/jornada`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ inicio: inicioStr, fin: finStr }),
+      body: JSON.stringify({ inicio, fin }),
     });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) {
-      if (msg) msg.textContent = data.message || "Error al guardar la jornada.";
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      msgElem.textContent = data.message || "Error al guardar la jornada.";
       return;
     }
-    await cargar();
+
+    // recargar con los valores que quedaron en la BD
+    await cargarJornada();
   } catch (err) {
     console.error(err);
-    if (msg) msg.textContent = "Error de conexión al guardar.";
+    msgElem.textContent = "Error de conexión al guardar.";
   }
 });
 
-// Recalcular resultados (stub)
-document.getElementById("btnRecalcular")?.addEventListener("click", async () => {
-  const out = document.getElementById("msgRes");
-  if (out) out.textContent = "";
-  try {
-    const r = await fetch(`${API_ADMIN}/resultados/recalcular`, {
-      method: "POST",
-      credentials: "include",
-    });
-    const data = await r.json().catch(() => ({}));
-    if (out) out.textContent = data.message || "Recalculo disparado (stub).";
-  } catch (err) {
-    console.error(err);
-    if (out) out.textContent = "Error de conexión al recalcular.";
-  }
-});
+/* ------------ botón Recalcular (stub) ------------ */
 
-// Cerrar sesión (aunque de momento esté medio rebelde lo dejamos igual)
-document.getElementById("btnLogout")?.addEventListener("click", async () => {
+btnRecalcular?.addEventListener("click", async () => {
   try {
-    const res = await fetch(`${API_ADMIN}/logout`, {
+    const res = await fetch(`${API_ADMIN}/resultados/recalcular`, {
       method: "POST",
       credentials: "include",
     });
     const data = await res.json().catch(() => ({}));
-    if (res.ok && data.ok) {
-      try {
-        sessionStorage.clear();
-        localStorage.clear();
-      } catch {}
-      window.location.replace("/admin/login.html");
-    } else {
-      alert(data.message || "No se pudo cerrar sesión.");
-    }
+    document.getElementById("msgRes").textContent =
+      data.message || "Recalculo disparado.";
   } catch (err) {
-    console.error("Logout error:", err);
-    alert("Error de conexión al cerrar sesión.");
+    console.error(err);
+    document.getElementById("msgRes").textContent = "Error al recalcular.";
   }
 });
 
-function setMinDates() {
-  const inicioInput = document.getElementById("inicio");
-  const finInput    = document.getElementById("fin");
-  if (!inicioInput || !finInput) return;
+/* ------------ botón Cerrar sesión (aunque lo dejemos para después) ------------ */
+btnLogout?.addEventListener("click", async () => {
+  try {
+    await fetch(`${API_ADMIN}/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch (e) {
+    console.error(e);
+  } finally {
+    window.location.replace("/admin/login.html");
+  }
+});
 
-  // now -> yyyy-MM-ddTHH:mm
+/* ------------ inicialización ------------ */
+
+// Opcional: evitar seleccionar fechas pasadas en el picker
+(function setMinInputs() {
   const now = new Date();
   const pad = (n) => String(n).padStart(2, "0");
   const nowStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
@@ -286,17 +194,6 @@ function setMinDates() {
 
   inicioInput.min = nowStr;
   finInput.min    = nowStr;
+})();
 
-  // cuando el usuario cambie inicio, fin.min debe ser como mínimo ese inicio
-  inicioInput.addEventListener("change", () => {
-    if (inicioInput.value) {
-      finInput.min = inicioInput.value;
-    }
-  });
-}
-
-// Cargar estado al inicio
-window.addEventListener("DOMContentLoaded", () => {
-  setMinDates();
-  cargar();
-});
+cargarJornada();

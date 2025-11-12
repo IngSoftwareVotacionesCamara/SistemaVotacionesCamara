@@ -75,7 +75,12 @@ router.put("/jornada", requireAdmin, async (req, res) => {
   if (!inicio || !fin) return res.status(400).json({ message: "inicio y fin son obligatorios" });
   const q = `
     INSERT INTO votaciones.jornada (id, inicio, fin, updated_at)
-    VALUES (1, $1::timestamptz, $2::timestamptz, now())
+    VALUES (
+      1,
+      ($1::timestamptz),
+      ($2::timestamptz),
+      now()
+    )
     ON CONFLICT (id) DO UPDATE SET
       inicio = EXCLUDED.inicio,
       fin    = EXCLUDED.fin,

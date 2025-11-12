@@ -43,6 +43,7 @@
             <div class="text-muted small mb-3">Define el rango en el que se permitirá el acceso de electores.</div>
 
             <form id="frmJornada" class="row g-3">
+                <div id="flash" class="mt-2"></div>
                 <div class="col-md-4">
                     <label class="form-label">Inicio</label>
                     <input id="inicio" type="datetime-local" class="form-control" required>
@@ -66,7 +67,9 @@
         <div class="card">
             <h5 class="mb-2">Resultados</h5>
             <p class="text-muted small">Cuando la jornada esté cerrada, podrás recalcular resultados.</p>
-            <button id="btnRecalcular" class="btn btn-outline-primary" type="button">Recalcular resultados (stub)</button>
+            <button id="btnRecalcular" class="btn btn-outline-primary" type="button" disabled>
+                Recalcular resultados (stub)
+            </button>
             <div id="msgRes" class="text-muted small mt-2"></div>
         </div>
     </main>

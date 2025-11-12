@@ -19,28 +19,44 @@ function requireAdmin(req, res, next) {
 
 /* -------------------- LOGIN ADMIN -------------------- */
 router.post("/login", async (req, res) => {
-  const { user, pass } = req.body || {};
-  if (!user || !pass) return res.status(400).json({ message: "Faltan credenciales" });
+  try {
+    const usuario  = (req.body.user ?? req.body.usuario ?? "").trim();
+    const password =  req.body.pass ?? req.body.password ?? "";
 
-  if (user !== ADMIN_USER) return res.status(401).json({ message: "Usuario o contraseña inválidos" });
+    if (!usuario || !password) {
+      return res.status(400).json({ ok:false, message:"Faltan credenciales" });
+    }
 
-  const seemsBcrypt = ADMIN_PASS.startsWith("$2a$") || ADMIN_PASS.startsWith("$2b$") || ADMIN_PASS.startsWith("$2y$");
-  let ok = false;
-  if (seemsBcrypt) {
-    try { ok = await bcrypt.compare(pass, ADMIN_PASS); } catch { ok = false; }
-  } else {
-    ok = pass === ADMIN_PASS;
+    const q = `
+      SELECT id, usuario, password
+      FROM votaciones.admin
+      WHERE usuario = $1
+      LIMIT 1
+    `;
+    const { rows } = await pool.query(q, [usuario]);
+    if (rows.length === 0) {
+      return res.status(401).json({ ok:false, message:"Usuario o contraseña inválidos" });
+    }
+
+    const admin = rows[0];
+    const ok = await bcrypt.compare(password, admin.password);
+    if (!ok) {
+      return res.status(401).json({ ok:false, message:"Usuario o contraseña inválidos" });
+    }
+
+    req.session.admin = { id: admin.id, usuario: admin.usuario };
+    return res.json({ ok:true, admin: { id: admin.id, usuario: admin.usuario } });
+  } catch (e) {
+    console.error("ADMIN LOGIN ERROR:", e);
+    return res.status(500).json({ ok:false, message:"Error interno" });
   }
-  if (!ok) return res.status(401).json({ message: "Usuario o contraseña inválidos" });
-
-  req.session.isAdmin = true;
-  return res.json({ ok: true });
 });
 
 router.post("/logout", (req, res) => {
-  req.session.isAdmin = false;
-  req.session.destroy(()=>{});
-  res.json({ ok: true });
+  req.session.destroy(() => {
+    res.clearCookie("sid");
+    res.json({ ok:true });
+  });
 });
 
 /* -------------------- JORNADA -------------------- */

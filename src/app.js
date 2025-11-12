@@ -68,6 +68,16 @@ function ensureAdmin(req,res,next){
 app.get("/admin/panel.html", ensureAdmin, (_req,res)=>
   res.sendFile(path.join(__dirname,"../frontend/admin/panel.html"))
 );
+app.get("/admin", (req, res) => {
+  if (req.session?.admin) return res.redirect("/admin/panel.html");
+  return res.redirect("/admin/login.html");
+});
+
+app.get("/admin/resultados.html", ensureAdmin, (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/admin/resultados.html"));
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, ()=>console.log("Servidor en puerto", PORT));
+
+

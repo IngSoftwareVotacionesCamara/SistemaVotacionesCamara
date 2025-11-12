@@ -98,4 +98,15 @@ router.post("/resultados/recalcular", requireAdmin, async (_req, res) => {
   res.json({ ok: true, message: "Recalculo disparado (stub)" });
 });
 
+router.post("/logout", (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error("Error al cerrar sesión:", err);
+      return res.status(500).json({ ok: false, message: "No se pudo cerrar la sesión" });
+    }
+    res.clearCookie("sid");
+    res.json({ ok: true });
+  });
+});
+
 export default router;

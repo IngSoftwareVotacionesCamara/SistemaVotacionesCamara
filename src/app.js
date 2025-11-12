@@ -34,7 +34,9 @@ app.use(cors({
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static("frontend"));
+app.use(express.static(path.join(process.cwd(), "frontend")));
+app.use("/admin", express.static(path.join(process.cwd(), "frontend/admin")));
+
 app.use(session({
   secret: process.env.SESSION_SECRET || "super-secret",
   resave: false,
@@ -65,8 +67,6 @@ app.use('/api', electoresRouter);
 app.use("/api", certificadoRouter);
 app.use("/api/estado", estadoRouter);
 app.use("/api/admin", adminRouter);
-app.use(express.static(path.resolve("frontend")));
-app.use("/admin", express.static("frontend/admin"));
 
 // Salud
 app.get("/api/health", (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));

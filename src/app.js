@@ -25,6 +25,13 @@ const API_URL = "https://sistemavotacionescamara.onrender.com/api";
 dotenv.config();
 const app = express();
 
+app.set('trust proxy', 1);
+
+app.use(cors({
+  origin: true,        // mismo origen
+  credentials: true,   // necesario para enviar cookies
+}));
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static("frontend"));
@@ -35,7 +42,19 @@ app.use(session({
   cookie: { sameSite: "lax" }
 }));
 
-app.set('trust proxy', 1);
+app.use(session({
+  name: "sid",
+  secret: process.env.SESSION_SECRET || "supersecret-change-this",
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production", // en Render = true
+    maxAge: 1000 * 60 * 60 * 8, // 8h
+  },
+}));
+
 
 // Rutas
 app.use("/api", authRoutes);
@@ -46,6 +65,7 @@ app.use('/api', electoresRouter);
 app.use("/api", certificadoRouter);
 app.use("/api/estado", estadoRouter);
 app.use("/api/admin", adminRouter);
+app.use(express.static(path.resolve("frontend")));
 app.use("/admin", express.static("frontend/admin"));
 
 // Salud
@@ -56,14 +76,16 @@ app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
 app.use(express.static(path.join(__dirname, "../frontend")));
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'dev-secret', // pon uno fuerte en Render
+  name: "sid",
+  secret: process.env.SESSION_SECRET || "supersecret-change-this",
   resave: false,
   saveUninitialized: false,
   cookie: {
-    maxAge: 15 * 60 * 1000,     // 15 minutos
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production' // true en Render (HTTPS)
-  }
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 1000 * 60 * 60 * 8, // 8h
+  },
 }));
 
 app.get("/", (_req, res) => {

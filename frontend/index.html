@@ -31,7 +31,7 @@
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
       <span class="fw-semibold">Estado de la jornada:</span>
-      <span class="badge bg-success badge-status">Abierta</span>
+      <span id="badgeEstado" class="badge bg-secondary badge-status">—</span>
     </div>
     <div id="horarioJornada" class="text-muted small"></div>
   </div>
@@ -61,107 +61,160 @@
 
   <div id="msg" class="mt-3"></div>
 </div>
-
 <script>
-    const API_URL = "/api";
+  const API_URL = "/api";
 
-    // ===== Helpers UI =====
-    function setMsg(text, kind="danger"){ const m=document.getElementById("msg"); m.className=`mt-3 text-${kind}`; m.textContent=text||""; }
-    function setHorario(){
-      const f=new Date(); const dia=f.toLocaleDateString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric"});
-      const el=document.getElementById("horarioJornada"); if(el) el.textContent=`Desde ${dia}, 8:00 a.m. hasta ${dia}, 4:00 p.m.`;
-    }
-    function disableForm(disabled=true){
-      document.querySelectorAll("#loginForm input, #loginForm select, #loginForm button").forEach(el=>{ el.disabled = !!disabled; });
-    }
-    function msToText(ms){
-      if(ms<=0) return "0s";
-      const s = Math.ceil(ms/1000);
-      const min = Math.floor(s/60), sec = s%60;
-      return min>0 ? `${min} min ${sec.toString().padStart(2,"0")} s` : `${sec} s`;
-    }
-    function startCountdown(ms, onFinish){
-      let remaining = ms;
+  // ===== Helpers UI =====
+  function setMsg(text, kind="danger"){
+    const m=document.getElementById("msg");
+    m.className=`mt-3 text-${kind}`;
+    m.textContent=text||"";
+  }
+  function disableForm(disabled=true){
+    document.querySelectorAll("#loginForm input, #loginForm select, #loginForm button")
+      .forEach(el=>{ el.disabled = !!disabled; });
+  }
+  function msToText(ms){
+    if(ms<=0) return "0s";
+    const s = Math.ceil(ms/1000);
+    const min = Math.floor(s/60), sec = s%60;
+    return min>0 ? `${min} min ${sec.toString().padStart(2,"0")} s` : `${sec} s`;
+  }
+  function startCountdown(ms, onFinish){
+    let remaining = ms;
+    setMsg(`El usuario puede votar pasados ${msToText(remaining)}.`, "warning");
+    const iv = setInterval(()=>{
+      remaining -= 1000;
+      if(remaining <= 0){
+        clearInterval(iv);
+        setMsg("Ya puedes intentar ingresar nuevamente.", "success");
+        disableForm(false);
+        onFinish && onFinish();
+        return;
+      }
       setMsg(`El usuario puede votar pasados ${msToText(remaining)}.`, "warning");
-      const iv = setInterval(()=>{
-        remaining -= 1000;
-        if(remaining <= 0){ clearInterval(iv); setMsg("Ya puedes intentar ingresar nuevamente.", "success"); disableForm(false); onFinish && onFinish(); return; }
-        setMsg(`El usuario puede votar pasados ${msToText(remaining)}.`, "warning");
-      }, 1000);
+    }, 1000);
+  }
+
+  // ==== Pinta horario/estado con datos del backend ====
+  function paintEstadoJornada(data){
+    // Badge de estado
+    const badge = document.getElementById("badgeEstado");
+    if(data?.abierta){
+      badge.textContent = "Abierta";
+      badge.className = "badge bg-success badge-status";
+    }else{
+      badge.textContent = "Cerrada";
+      badge.className = "badge bg-danger badge-status";
     }
 
-    // ===== Boot =====
-    window.addEventListener("DOMContentLoaded", ()=>{
-      setHorario();
+    // Horario (inicio/fin en es-CO)
+    const el = document.getElementById("horarioJornada");
+    if(el && data?.inicio && data?.fin){
+      const i = new Date(data.inicio).toLocaleString("es-CO", { dateStyle:"short", timeStyle:"short" });
+      const f = new Date(data.fin).toLocaleString("es-CO", { dateStyle:"short", timeStyle:"short" });
+      el.textContent = `Desde ${i} hasta ${f}`;
+    }
+  }
 
-      // Toggle password
-      const togglePassword=document.getElementById("togglePassword");
-      const passwordField=document.getElementById("password");
-      togglePassword?.addEventListener("click", ()=>{
-        const type = passwordField.getAttribute("type")==="password" ? "text" : "password";
-        passwordField.setAttribute("type", type);
-        togglePassword.textContent = type==="password" ? "👁️" : "🙈";
-      });
+  // ==== Verifica la jornada ANTES de habilitar el formulario ====
+  async function checkJornada() {
+    try{
+      const r = await fetch("/api/estado/jornada");
+      const data = await r.json();
+      paintEstadoJornada(data);
 
-      const form   = document.getElementById("loginForm");
-      const idEl   = document.getElementById("id_elector");
-      const passEl = document.getElementById("password");
-      const btn    = document.getElementById("btnSubmit");
+      if(!data.abierta){
+        // Redirige a la pantalla de votaciones cerradas
+        window.location.replace("/cerrado.html");
+        return false;
+      }
+      return true;
+    }catch{
+      // Si falla, no bloqueamos, pero dejamos estado desconocido
+      return true;
+    }
+  }
 
-      form?.addEventListener("submit", async (e)=>{
-        e.preventDefault();
-        setMsg("", "danger");
+  // ===== Boot =====
+  window.addEventListener("DOMContentLoaded", async ()=>{
+    // 1) Verificar estado de jornada
+    const abierta = await checkJornada();
+    if(!abierta) return; // ya redirigió
 
-        const id_elector = (idEl?.value||"").trim();
-        const password   = (passEl?.value||"");
-        if(!/^\d+$/.test(id_elector)){ setMsg("Documento inválido."); return; }
-        if(!password){ setMsg("Ingrese la contraseña."); return; }
-
-        const oldTxt = btn.textContent; btn.disabled=true; btn.textContent="Validando…";
-
-        try{
-          const res = await fetch(`${API_URL}/login`, {
-            method:"POST",
-            headers:{ "Content-Type":"application/json" },
-            body: JSON.stringify({ id_elector, password })
-          });
-          const data = await res.json().catch(()=> ({}));
-
-          // Estados especiales
-          if(res.status === 409){ // EFECTUADO
-            setMsg(data.message || "El elector ya registró su voto.", "warning");
-            disableForm(true);
-            return;
-          }
-          if(res.status === 423){ // BLOQUEADO
-            disableForm(true);
-            const remaining = Number(data.remaining_ms || 0);
-            startCountdown(remaining, ()=>{ /* al terminar el conteo, el usuario puede volver a intentar */ });
-            return;
-          }
-
-          if(!res.ok || !data?.elector?.id_elector){
-            setMsg(data.message || "Credenciales inválidas.");
-            return;
-          }
-
-          // OK -> guardar sesión y a votar
-          const payload = {
-            id_elector: data.elector.id_elector,
-            nombres:    data.elector.nombres,
-            codigo_dane:data.elector.codigo_dane
-          };
-          sessionStorage.setItem("elector", JSON.stringify(payload));
-          localStorage.setItem("elector_backup", JSON.stringify(payload));
-          window.location.assign("/votar.html");
-        }catch(err){
-          console.error(err);
-          setMsg("Error de conexión con el servidor.");
-        }finally{
-          btn.disabled=false; btn.textContent=oldTxt;
-        }
-      });
+    // 2) Toggle password
+    const togglePassword=document.getElementById("togglePassword");
+    const passwordField=document.getElementById("password");
+    togglePassword?.addEventListener("click", ()=>{
+      const type = passwordField.getAttribute("type")==="password" ? "text" : "password";
+      passwordField.setAttribute("type", type);
+      togglePassword.textContent = type==="password" ? "👁️" : "🙈";
     });
-  </script>
+
+    // 3) Login handler (igual que tenías)
+    const form   = document.getElementById("loginForm");
+    const idEl   = document.getElementById("id_elector");
+    const passEl = document.getElementById("password");
+    const btn    = document.getElementById("btnSubmit");
+
+    form?.addEventListener("submit", async (e)=>{
+      e.preventDefault();
+      setMsg("", "danger");
+
+      const id_elector = (idEl?.value||"").trim();
+      const password   = (passEl?.value||"");
+      if(!/^\d+$/.test(id_elector)){ setMsg("Documento inválido."); return; }
+      if(!password){ setMsg("Ingrese la contraseña."); return; }
+
+      const oldTxt = btn.textContent; btn.disabled=true; btn.textContent="Validando…";
+
+      try{
+        // Revalida que siga abierta por si se cerró mientras tanto
+        const stillOpen = await checkJornada();
+        if(!stillOpen){ return; }
+
+        const res = await fetch(`${API_URL}/login`, {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ id_elector, password })
+        });
+        const data = await res.json().catch(()=> ({}));
+
+        // Estados especiales
+        if(res.status === 409){ // EFECTUADO
+          setMsg(data.message || "El elector ya registró su voto.", "warning");
+          disableForm(true);
+          return;
+        }
+        if(res.status === 423){ // BLOQUEADO
+          disableForm(true);
+          const remaining = Number(data.remaining_ms || 0);
+          startCountdown(remaining, ()=>{ /* después del conteo, puede intentar */ });
+          return;
+        }
+
+        if(!res.ok || !data?.elector?.id_elector){
+          setMsg(data.message || "Credenciales inválidas.");
+          return;
+        }
+
+        // OK -> guardar sesión y a votar
+        const payload = {
+          id_elector: data.elector.id_elector,
+          nombres:    data.elector.nombres,
+          codigo_dane:data.elector.codigo_dane
+        };
+        sessionStorage.setItem("elector", JSON.stringify(payload));
+        localStorage.setItem("elector_backup", JSON.stringify(payload));
+        window.location.assign("/votar.html");
+      }catch(err){
+        console.error(err);
+        setMsg("Error de conexión con el servidor.");
+      }finally{
+        btn.disabled=false; btn.textContent=oldTxt;
+      }
+    });
+  });
+</script>
 </body>
 </html>

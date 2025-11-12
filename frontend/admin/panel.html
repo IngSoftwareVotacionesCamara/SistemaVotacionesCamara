@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Admin · Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link rel="stylesheet" href="admin.css"/>
+</head>
+<body>
+<div class="header">
+    <div class="d-flex align-items-center gap-3">
+        <img src="../img/logo_cne.png" alt="CNE"/>
+        <div class="lh-sm">
+            <div style="font-size:.9rem">República de Colombia</div>
+            <div class="fw-bold">Sistema de Votación a Cámara de Representantes</div>
+        </div>
+    </div>
+    <div class="fw-semibold">Módulo Administrativo</div>
+</div>
+
+<div class="shell">
+    <aside class="sidebar">
+        <img src="../img/registraduria.png" class="brand" alt="Registro">
+        <div class="menu">
+            <button class="active" disabled>Configuración</button>
+            <button disabled>Circunscripciones</button>
+            <button disabled>Partidos</button>
+            <button disabled>Candidatos</button>
+            <button disabled>Elecciones</button>
+            <button disabled>Resultados</button>
+        </div>
+        <hr/>
+        <button id="btnLogout" class="btn btn-outline-danger w-100">Cerrar sesión</button>
+    </aside>
+
+    <main>
+        <div class="card mb-3">
+            <h5 class="mb-2">Jornada de votaciones</h5>
+            <div class="text-muted small mb-3">Define el rango en el que se permitirá el acceso de electores.</div>
+
+            <form id="frmJornada" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Inicio</label>
+                    <input id="inicio" type="datetime-local" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Fin</label>
+                    <input id="fin" type="datetime-local" class="form-control" required>
+                </div>
+                <div class="col-md-4 d-flex align-items-end gap-2">
+                    <button class="btn btn-primary" type="submit">Guardar</button>
+                    <button id="btnCerrarAhora" class="btn btn-outline-secondary" type="button">Cerrar ahora</button>
+                </div>
+                <div class="col-12">
+                    <span id="estadoBadge" class="badge bg-secondary">—</span>
+                    <small id="estadoText" class="ms-2 text-muted"></small>
+                </div>
+                <div id="msg" class="text-danger"></div>
+            </form>
+        </div>
+
+        <div class="card">
+            <h5 class="mb-2">Resultados</h5>
+            <p class="text-muted small">Cuando la jornada esté cerrada, podrás recalcular resultados.</p>
+            <button id="btnRecalcular" class="btn btn-outline-primary" type="button">Recalcular resultados (stub)</button>
+            <div id="msgRes" class="text-muted small mt-2"></div>
+        </div>
+    </main>
+</div>
+
+<script src="admin-panel.js"></script>
+</body>
+</html>

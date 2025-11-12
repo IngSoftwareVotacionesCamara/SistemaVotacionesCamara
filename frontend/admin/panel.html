@@ -34,6 +34,8 @@
         <button id="btnLogout" class="btn btn-outline-danger w-100">Cerrar sesión</button>
     </aside>
 
+    <button id="btnLogout" class="btn btn-outline-secondary btn-sm">Cerrar sesión</button>
+
     <main>
         <div class="card mb-3">
             <h5 class="mb-2">Jornada de votaciones</h5>
@@ -69,6 +71,13 @@
     </main>
 </div>
 
-<script src="admin-panel.js"></script>
+<script src="admin-panel.js">
+  document.getElementById("btnLogout")?.addEventListener("click", async () => {
+    try {
+      await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
+    } catch {}
+    location.replace("/admin/login.html");
+  });
+</script>
 </body>
 </html>

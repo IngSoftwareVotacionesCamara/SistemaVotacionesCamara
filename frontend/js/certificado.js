@@ -1,106 +1,110 @@
 // frontend/js/certificado.js
-// Genera el PDF del certificado SIN información del voto
+// Requiere jsPDF ya cargado en la página (CDN)
+// Genera un certificado *sin información del voto* (secreto)
 
-(function(){
-  // Carga una imagen y la devuelve como dataURL (para jsPDF)
-  async function toDataURL(src) {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = function () {
-        const canvas = document.createElement("canvas");
-        canvas.width = this.naturalWidth;
-        canvas.height = this.naturalHeight;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(this, 0, 0);
-        resolve(canvas.toDataURL("image/png"));
-      };
-      img.onerror = () => resolve(null);
-      img.src = src;
-    });
+const { jsPDF } = window.jspdf;
+
+/** Util: cargar imagen y devolverla como HTMLImageElement */
+function loadImg(src) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => res(img);
+    img.onerror = rej;
+    img.src = src;
+  });
+}
+
+/** Formatos de fecha para el certificado */
+function fechaLargaHoy() {
+  // Solo la FECHA DEL EVENTO si quieres fijarla, si no, hoy:
+  // return "19 de noviembre de 2025";
+  const f = new Date();
+  return f.toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" });
+}
+function fechaHoraEmision() {
+  return new Date().toLocaleString("es-CO", { dateStyle: "short", timeStyle: "medium" });
+}
+
+/**
+ * Genera y descarga el certificado con el estilo solicitado.
+ * @param {{nombres:string, id_elector:string|number}} elector
+ */
+export async function descargarCertificado(elector) {
+  if (!elector) return;
+
+  const doc = new jsPDF({ unit: "pt", format: "letter" }); // 612x792 pt
+  const W = doc.internal.pageSize.getWidth();
+  const center = (y, text, opts = {}) => doc.text(text, W / 2, y, { align: "center", ...opts });
+
+  // Cargar imágenes (colócalas en /frontend/img)
+  //  - /img/cne_logo_grande.png   (versión grande horizontal)
+  //  - /img/firma_cne.png         (firma manuscrita)
+  let logo, firma;
+  try {
+    logo  = await loadImg("/img/cne_logo_grande.png");
+  } catch { /* fallback: sin logo */ }
+  try {
+    firma = await loadImg("/img/firma_cne.png");
+  } catch { /* fallback: sin firma */ }
+
+  // ---------- Encabezado ----------
+  let y = 70;
+  if (logo) {
+    const targetW = 240;           // ancho objetivo del logo
+    const ratio   = logo.height / logo.width;
+    const targetH = targetW * ratio;
+    const x = (W - targetW) / 2;
+    doc.addImage(logo, "PNG", x, y - 10, targetW, targetH, undefined, "FAST");
+    y += targetH + 30;
   }
 
-  function fmtFechaLarga(d = new Date()) {
-    // “19 de noviembre de 2025”
-    const opt = { day: "2-digit", month: "long", year: "numeric" };
-    return d.toLocaleDateString("es-CO", opt);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(22);
+  center(y, "República de Colombia"); y += 35;
+
+  doc.setFontSize(20);
+  center(y, "Certificado de Votación"); y += 45;
+
+  // ---------- Cuerpo ----------
+  const nombre = String(elector.nombres || "").trim();
+  const idDoc  = String(elector.id_elector || "").trim();
+  const fecha  = fechaLargaHoy();
+  const emite  = fechaHoraEmision();
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
+
+  center(y, "El consejo nacional electoral certifica que el ciudadano:"); y += 22;
+
+  doc.setFont("helvetica", "bold");
+  center(y, nombre); y += 22;
+
+  doc.setFont("helvetica", "normal");
+  center(y, `con número de identificación: ${idDoc},`); y += 22;
+
+  center(y, `participó en las elecciones de Cámara de Representantes del ${fecha}.`); y += 60;
+
+  // ---------- Firma y pie ----------
+  const firmaW = 160;
+  if (firma) {
+    const r  = firma.height / firma.width;
+    const fh = firmaW * r;
+    const fx = (W - firmaW) / 2;
+    doc.addImage(firma, "PNG", fx, y - fh + 8, firmaW, fh, undefined, "FAST");
   }
-  function fmtFechaHora(d = new Date()) {
-    // “9/11/2025, 6:42:05 p. m.”
-    const opt = { year:"numeric", month:"numeric", day:"numeric", hour:"numeric", minute:"2-digit", second:"2-digit" };
-    return d.toLocaleString("es-CO", opt);
-  }
+  y += 24;
 
-  // API pública:
-  // generarCertificado({ nombres, id_elector })
-  window.generarCertificado = async function generarCertificado(elector){
-    if (!elector) return;
+  doc.setFont("helvetica", "bold");
+  center(y, "Consejo Nacional Electoral"); y += 28;
 
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit: "pt", format: "letter" }); // 612x792 pt aprox
-    const W = doc.internal.pageSize.getWidth();
+  doc.setFont("helvetica", "normal");
+  doc.text(`Fecha de emisión: ${emite}.`, 72, y);
 
-    // ====== Encabezado (logo + título) ======
-    const logo = await toDataURL("/img/logo_cne.png"); // opcional
-    if (logo) {
-      // logo arriba derecha ~ 110x45
-      doc.addImage(logo, "PNG", W - 110 - 50, 40, 110, 45);
-    }
+  doc.setFontSize(10);
+  doc.setTextColor(140);
+  center(760, "Este documento es de uso personal y está sujeto a las leyes colombianas.");
+  doc.setTextColor(0);
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text("Consejo Nacional Electoral", 50, 65);
-    doc.setFont("helvetica","normal");
-    doc.setFontSize(11);
-    doc.text("República de Colombia", 50, 82);
-
-    // Títulos centrar
-    doc.setFont("helvetica","bold");
-    doc.setFontSize(22);
-    doc.text("República de Colombia", W/2, 150, { align:"center" });
-    doc.setFontSize(20);
-    doc.text("Certificado de Votación", W/2, 184, { align:"center" });
-
-    // ====== Cuerpo ======
-    const yStart = 230;
-    const nombre = elector.nombres || "";
-    const id     = elector.id_elector || "";
-    const fechaEleccion = fmtFechaLarga(new Date());
-    const emision = fmtFechaHora(new Date());
-
-    doc.setFont("helvetica","normal");
-    doc.setFontSize(12);
-
-    const lines = [
-      "El Consejo Nacional Electoral certifica que el(la) ciudadano(a):",
-      ` ${nombre}`,
-      `con número de identificación: ${id},`,
-      `participó en las elecciones de Cámara de Representantes del ${fechaEleccion}.`
-    ];
-    let y = yStart;
-    lines.forEach(t => { doc.text(t, 72, y); y += 22; });
-
-    // Firma / autoridad (opcional)
-    y += 36;
-    const firma = await toDataURL("/img/firma_cne.png"); // opcional
-    if (firma) {
-      doc.addImage(firma, "PNG", 72, y-18, 110, 40);
-      y += 26;
-    }
-    doc.setFont("helvetica","bold");
-    doc.text("Consejo Nacional Electoral", 72, y); y += 18;
-
-    // Emisión
-    doc.setFont("helvetica","normal");
-    doc.text(`Fecha de emisión: ${emision}`, 72, y);
-
-    // Nota legal
-    doc.setFontSize(10);
-    doc.text(
-      "Este documento es de uso personal y está sujeto a las leyes colombianas.",
-      W/2, 760, { align:"center" }
-    );
-
-    doc.save(`certificado_votacion_${id}.pdf`);
-  };
-})();
+  doc.save(`certificado_votacion_${idDoc}.pdf`);
+}

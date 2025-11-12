@@ -2,6 +2,7 @@
 // Servidor principal
 // ===============================
 import express from "express";
+import session from "express-session";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
@@ -14,7 +15,6 @@ import catalogosRoutes from "./routes/catalogos.js";
 import votoRouter from './routes/voto.js';
 import electoresRouter from './routes/electores.js';
 import certificadoRouter from "./routes/certificado.js";
-import session from "express-session";
 import adminRouter from "./routes/admin.js";
 import estadoRouter from "./routes/estado.js";
 
@@ -35,6 +35,8 @@ app.use(session({
   cookie: { sameSite: "lax" }
 }));
 
+app.set('trust proxy', 1);
+
 // Rutas
 app.use("/api", authRoutes);
 app.use("/api", votoRoutes);
@@ -52,6 +54,17 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
 
 app.use(express.static(path.join(__dirname, "../frontend")));
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'dev-secret', // pon uno fuerte en Render
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 15 * 60 * 1000,     // 15 minutos
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production' // true en Render (HTTPS)
+  }
+}));
 
 app.get("/", (_req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/index.html"));

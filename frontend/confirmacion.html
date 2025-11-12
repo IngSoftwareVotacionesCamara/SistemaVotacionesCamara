@@ -8,21 +8,22 @@
     <style>
     :root{
       --primary:#003366; --bg:#f4f7fb; --ink:#172033; --muted:#6b778c; --line:#d8e1ee; --white:#fff;
+      --btn:#004884;
     }
     body{background:var(--bg); color:var(--ink)}
     .header{background:var(--primary); color:#fff; padding:12px 28px; display:flex; align-items:center; justify-content:space-between}
     .header img{height:46px}
     .card-wrap{max-width:900px; margin:36px auto}
     .card{border-radius:14px}
-    .ok-badge{font-weight:600}
     .note{font-size:.95rem; color:var(--muted)}
-    .btn-primary{background:#004884; border-color:#004884}
+    .btn-primary{background:var(--btn); border-color:var(--btn)}
+    .btn-primary:disabled{opacity:.65}
     .btn-outline-secondary{border-color:#cfd6e4}
     .alert-success{border:1px solid #b7e1c1}
   </style>
 </head>
 <body>
-<!-- Cinta superior (igual que en votar/index) -->
+<!-- Cinta superior -->
 <div class="header">
     <div class="d-flex align-items-center gap-3">
         <img src="img/logo_cne.png" alt="CNE" />
@@ -43,11 +44,9 @@
             </div>
 
             <p class="mb-2">Tu voto fue registrado correctamente.</p>
-            <p class="note mb-3">
-                Descarga tu certificado de votación y, posteriormente, podrás salir al inicio.
-            </p>
+            <p class="note mb-3">Descarga tu certificado de votación y, posteriormente, podrás salir al inicio.</p>
 
-            <!-- ⚠️ Sólo datos del elector; nada del voto -->
+            <!-- Sólo datos del elector; nada del voto -->
             <div id="infoElector" class="small text-muted mb-3"></div>
 
             <div id="alertCert" class="alert alert-info py-2 px-3 mb-3">
@@ -55,139 +54,68 @@
             </div>
 
             <div class="d-flex gap-2">
-                <button id="btnCert" class="btn btn-success">
-                    📥 Descargar certificado
-                </button>
+                <button id="btnCert" class="btn btn-success">📥 Descargar certificado</button>
                 <button id="btnSalir" class="btn btn-outline-secondary" disabled>Salir</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- jsPDF -->
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<!-- jsPDF + generador del certificado -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script src="js/certificado.js"></script>
+
 <script>
-    const { jsPDF } = window.jspdf;
+    // ===== Estado (elector en sesión) =====
+    const elector = (() => {
+      try { return JSON.parse(sessionStorage.getItem("elector") || "null"); }
+      catch { return null; }
+    })();
 
-    // ==== Helpers ====
-    function getQueryParam(name){
-      const u = new URL(window.location.href);
-      return u.searchParams.get(name);
-    }
-    function fmtFechaLarga(d){
-      const f = new Date(d);
-      return f.toLocaleString("es-CO", { year:"numeric", month:"long", day:"numeric" });
-    }
-    function fmtFechaHora(d){
-      const f = new Date(d);
-      return f.toLocaleString("es-CO", { dateStyle: "short", timeStyle: "medium" });
-    }
-
-    // ==== Cargar elector + cod_vota ====
-    const elector = (()=>{ try{ return JSON.parse(sessionStorage.getItem("elector")||"null"); }catch{ return null }})();
-    const codVota = getQueryParam("cod_vota"); // folio (no revela elección)
-
-    // Mostrar identidad (sin detalles del voto)
+    // Pinta identidad (sin datos del voto)
     (function pintarInfo(){
       const el = document.getElementById("infoElector");
       if (!elector) { el.textContent = "Sesión expirada."; return; }
-      const nombre = elector.nombres || "";
-      const id     = elector.id_elector || "";
-      const folio  = codVota ? ` · Folio: ${codVota}` : "";
-      el.textContent = `Elector: ${nombre} (ID: ${id})${folio}`;
+      el.textContent = `Elector: ${elector.nombres || ""} (ID: ${elector.id_elector || ""})`;
     })();
 
-    // ==== Certificado (sin detalles del voto) ====
-    function generarCertificado(){
-      if (!elector) return;
-
-      const doc = new jsPDF({ unit:"pt", format:"letter" }); // 612x792 pt
-      const pageW = doc.internal.pageSize.getWidth();
-
-      // Logo (si quieres, puedes incrustar un PNG Base64; aquí sólo texto de cabecera)
-      doc.setFont("helvetica","bold");
-      doc.setFontSize(18);
-      doc.text("CNE", 50, 60);
-      doc.setFontSize(11);
-      doc.setFont("helvetica","normal");
-      doc.text("Consejo Nacional Electoral - COLOMBIA", 50, 78);
-
-      // Títulos
-      doc.setFont("helvetica","bold");
-      doc.setFontSize(22);
-      doc.text("República de Colombia", pageW/2, 140, { align:"center" });
-      doc.setFontSize(20);
-      doc.text("Certificado de Votación", pageW/2, 175, { align:"center" });
-
-      // Cuerpo
-      doc.setFontSize(12);
-      doc.setFont("helvetica","normal");
-
-      const y0 = 220;
-      const nombre = elector.nombres || "";
-      const id     = elector.id_elector || "";
-      const fechaEleccion = fmtFechaLarga(new Date()); // o fija la fecha del evento si la tienes
-      const emision = fmtFechaHora(new Date());
-      const folio  = codVota || "—";
-
-      const texto = [
-        "El Consejo Nacional Electoral certifica que el(la) ciudadano(a):",
-        ` ${nombre}`,
-        `con número de identificación: ${id},`,
-        `participó en las elecciones de Cámara de Representantes del ${fechaEleccion}.`
-      ];
-
-      let y = y0;
-      texto.forEach(t => { doc.text(t, 72, y); y += 22; });
-
-      y += 18;
-      doc.text(`Folio: ${folio}`, 72, y); y += 40;
-
-      // “firma” y pie
-      doc.setFont("helvetica","bold");
-      doc.text("Consejo Nacional Electoral", 72, y); y += 8;
-      doc.setFont("helvetica","normal");
-      doc.text(`Fecha de emisión: ${emision}`, 72, y);
-
-      doc.setFontSize(10);
-      doc.text(
-        "Este documento es de uso personal y está sujeto a las leyes colombianas.",
-        pageW/2, 760, { align:"center" }
-      );
-
-      doc.save(`certificado_votacion_${id}.pdf`);
-    }
-
-    // ==== UI & flujo ====
-    const btnCert = document.getElementById("btnCert");
-    const btnSalir = document.getElementById("btnSalir");
+    // ===== UI =====
+    const btnCert   = document.getElementById("btnCert");
+    const btnSalir  = document.getElementById("btnSalir");
     const alertCert = document.getElementById("alertCert");
 
-    // Habilitar "Salir" sólo cuando se descargue el certificado
-    btnCert?.addEventListener("click", () => {
-      generarCertificado();
-      sessionStorage.setItem("cert_descargado", "1");
-      alertCert.className = "alert alert-success py-2 px-3 mb-3";
-      alertCert.textContent = "Certificado descargado correctamente. Ya puedes salir.";
+    // Descarga certificado → habilita "Salir" (azul)
+    btnCert?.addEventListener("click", async () => {
+      try {
+        await window.generarCertificado(elector); // usa la función del archivo certificado.js
+        sessionStorage.setItem("cert_descargado", "1");
 
-      // Cambia el estilo del botón "Salir" al mismo del botón azul de Validar
-      btnSalir.disabled = false;
-      btnSalir.classList.remove("btn-outline-secondary");
-      btnSalir.classList.add("btn-primary", "text-white");
+        alertCert.className = "alert alert-success py-2 px-3 mb-3";
+        alertCert.textContent = "Certificado descargado correctamente. Ya puedes salir.";
+
+        btnSalir.disabled = false;
+        btnSalir.classList.remove("btn-outline-secondary");
+        btnSalir.classList.add("btn-primary", "text-white");
+      } catch (e) {
+        console.error(e);
+        alertCert.className = "alert alert-danger py-2 px-3 mb-3";
+        alertCert.textContent = "No se pudo generar el certificado. Intenta nuevamente.";
+      }
     });
 
+    // Salir sólo si descargó certificado
     btnSalir?.addEventListener("click", () => {
-      const ok = sessionStorage.getItem("cert_descargado") === "1";
-      if (!ok) return; // defensa extra
-      // limpiar sesión de elector (el front) y volver al inicio
+      if (sessionStorage.getItem("cert_descargado") !== "1") return;
       try { sessionStorage.removeItem("elector"); } catch {}
       window.location.replace("/");
     });
 
-    // Si el usuario recarga, conservamos el estado permitido (por si ya descargó)
+    // Si recarga la página y ya descargó, mantener habilitado
     (function initSalirState(){
       if (sessionStorage.getItem("cert_descargado") === "1") {
         btnSalir.disabled = false;
+        btnSalir.classList.remove("btn-outline-secondary");
+        btnSalir.classList.add("btn-primary", "text-white");
         alertCert.className = "alert alert-success py-2 px-3 mb-3";
         alertCert.textContent = "Certificado descargado correctamente. Ya puedes salir.";
       }

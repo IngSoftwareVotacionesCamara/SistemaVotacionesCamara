@@ -66,6 +66,7 @@
 <!-- TU generador (el de frontend/js/certificado.js) -->
 <script src="js/certificado.js?v=2" defer></script>
 <script>
+    try { sessionStorage.removeItem("cert_descargado"); } catch {}
     window.addEventListener('DOMContentLoaded', () => {
       // ===== Estado (elector en sesión) =====
       const elector = (() => { try { return JSON.parse(sessionStorage.getItem("elector") || "null"); } catch { return null; } })();

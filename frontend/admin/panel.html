@@ -72,12 +72,28 @@
 </div>
 
 <script src="admin-panel.js">
-  document.getElementById("btnLogout")?.addEventListener("click", async () => {
-    try {
-      await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
-    } catch {}
-    location.replace("/admin/login.html");
-  });
+    document.getElementById("btnLogout")?.addEventListener("click", async () => {
+      try {
+        const res = await fetch("/api/admin/logout", {
+          method: "POST",
+          credentials: "include", // 🔥 importante para que se envíe la cookie de sesión
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (data.ok) {
+          // 🔄 destruir sesión del cliente
+          sessionStorage.clear();
+          localStorage.clear();
+          // redirigir al login
+          location.replace("/admin/login.html");
+        } else {
+          alert("No se pudo cerrar sesión. Intenta de nuevo.");
+        }
+      } catch (err) {
+        console.error("Logout error:", err);
+        alert("Error de conexión al cerrar sesión.");
+      }
+    });
 </script>
 </body>
 </html>

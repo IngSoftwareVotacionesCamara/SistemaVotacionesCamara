@@ -5,19 +5,13 @@ import { pool } from "../db.js";
 
 const router = express.Router();
 
-// ⚙️ Credenciales admin: usa variables de entorno
-// ADMIN_USER=admin
-// ADMIN_PASS=hash_bcrypt_o_texto (acepto bcrypt o texto plano)
-const ADMIN_USER = process.env.ADMIN_USER || "admin";
-const ADMIN_PASS = process.env.ADMIN_PASS || "admin123";
-
-// Middleware de sesión admin
+// Debe comprobar **admin**, no isAdmin
 function requireAdmin(req, res, next) {
-  if (req.session?.isAdmin) return next();
-  return res.status(401).json({ message: "No autorizado" });
+  if (req.session?.admin) return next();
+  return res.status(401).json({ ok: false, message: "No autorizado" });
 }
 
-/* -------------------- LOGIN ADMIN -------------------- */
+/* -------- LOGIN ADMIN -------- */
 router.post("/login", async (req, res) => {
   try {
     const usuario  = (req.body.user ?? req.body.usuario ?? "").trim();
@@ -34,7 +28,7 @@ router.post("/login", async (req, res) => {
       LIMIT 1
     `;
     const { rows } = await pool.query(q, [usuario]);
-    if (rows.length === 0) {
+    if (!rows.length) {
       return res.status(401).json({ ok:false, message:"Usuario o contraseña inválidos" });
     }
 
@@ -44,6 +38,7 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ ok:false, message:"Usuario o contraseña inválidos" });
     }
 
+    // 🎯 Guardamos en la sesión la misma clave que usan los guards
     req.session.admin = { id: admin.id, usuario: admin.usuario };
     return res.json({ ok:true, admin: { id: admin.id, usuario: admin.usuario } });
   } catch (e) {
@@ -52,15 +47,22 @@ router.post("/login", async (req, res) => {
   }
 });
 
+/* -------- LOGOUT -------- */
 router.post("/logout", (req, res) => {
-  req.session.destroy(() => {
-    res.clearCookie("sid");
-    res.json({ ok:true });
-  });
+  // destruir si existe, y limpiar cookie con mismas opciones
+  const done = () => {
+    res.clearCookie("sid", {
+      path: "/",
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+    res.json({ ok: true });
+  };
+  if (req.session) req.session.destroy(done);
+  else done();
 });
 
-/* -------------------- JORNADA -------------------- */
-// GET actual
+/* -------- JORNADA -------- */
 router.get("/jornada", requireAdmin, async (_req, res) => {
   const q = `SELECT inicio, fin, updated_at FROM votaciones.jornada WHERE id=1`;
   const r = await pool.query(q);
@@ -68,7 +70,6 @@ router.get("/jornada", requireAdmin, async (_req, res) => {
   res.json(r.rows[0]);
 });
 
-// PUT actualizar
 router.put("/jornada", requireAdmin, async (req, res) => {
   const { inicio, fin } = req.body || {};
   if (!inicio || !fin) return res.status(400).json({ message: "inicio y fin son obligatorios" });
@@ -77,7 +78,7 @@ router.put("/jornada", requireAdmin, async (req, res) => {
     VALUES (1, $1::timestamptz, $2::timestamptz, now())
     ON CONFLICT (id) DO UPDATE SET
       inicio = EXCLUDED.inicio,
-      fin = EXCLUDED.fin,
+      fin    = EXCLUDED.fin,
       updated_at = now()
     RETURNING inicio, fin, updated_at;
   `;
@@ -85,24 +86,15 @@ router.put("/jornada", requireAdmin, async (req, res) => {
   res.json(r.rows[0]);
 });
 
-// POST cerrar ahora (opcional)
 router.post("/jornada/cerrar_ahora", requireAdmin, async (_req, res) => {
   const q = `UPDATE votaciones.jornada SET fin = now(), updated_at = now() WHERE id=1 RETURNING inicio, fin`;
   const r = await pool.query(q);
   res.json(r.rows[0] || {});
 });
 
-/* -------------------- RESULTADOS (stub) -------------------- */
+/* -------- RESULTADOS (stub) -------- */
 router.post("/resultados/recalcular", requireAdmin, async (_req, res) => {
-  // TODO: implementar cálculo real más adelante
   res.json({ ok: true, message: "Recalculo disparado (stub)" });
-});
-
-router.post("/logout", (req, res) => {
-  req.session.destroy(() => {
-    res.clearCookie("sid", { path: "/" }); // <- igual al name del session
-    res.json({ ok: true });
-  });
 });
 
 export default router;

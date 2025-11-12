@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard Electoral - Resultados</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+    <style>
+    body { background-color: #f5f6fa; }
+    h2, h4 { color: #003366; font-weight: 600; }
+    table th { background-color: #003366; color: white; }
+    .hidden { display: none; }
+    .chart-container {
+      background: #fff; border-radius: 10px; padding: 15px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin-bottom: 30px;
+    }
+  </style>
+</head>
+
+<body class="p-4">
+<div class="container">
+    <h2 class="text-center mb-4">📊 Resultados votaciones camara de representantes </h2>
+
+    <!-- ===========================
+         MENÚ PRINCIPAL
+    ============================ -->
+    <div id="menuPrincipal">
+        <div class="card p-4 shadow">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex gap-2">
+                    <button id="btnProcesar" class="btn btn-primary">🔄 Procesar Resultados</button>
+                    <button id="btnExportar" class="btn btn-success">📁 Exportar a Excel</button>
+                </div>
+                <h4 class="mb-0">🗳️ Resultados Electorales</h4>
+            </div>
+            <span id="status" class="text-muted mb-3 d-block">Esperando acción...</span>
+            <hr>
+
+            <h5 class="text-center mb-3">Seleccione una opción:</h5>
+            <div class="d-grid gap-3">
+                <button class="btn btn-primary" onclick="mostrarSeccion('conformacion')">
+                    🏛️ Conformación Cámara
+                </button>
+                <button class="btn btn-secondary" onclick="mostrarSeccion('territoriales')">
+                    🗺️ Resultados Circunscripciones Territoriales
+                </button>
+                <button class="btn btn-info text-white" onclick="mostrarSeccion('especiales')">
+                    🌍 Resultados Circunscripciones Especiales
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===========================
+         CASO DE USO 16 - CONFORMACIÓN CÁMARA
+    =========================== -->
+    <div id="seccionConformacion" class="hidden">
+        <h4 class="mt-4">🏛️ Conformación de la Cámara</h4>
+
+        <!-- 🔹 Filtros -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Partido</label>
+                <select id="filtroPartidoConformacion" class="form-select">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Circunscripción</label>
+                <select id="filtroCircConformacion" class="form-select">
+                    <option value="">Todas</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 🔹 Gráfico -->
+        <div class="chart-container">
+            <h6 class="text-center mb-2">Distribución de elegidos por partido</h6>
+            <canvas id="chartConformacion" height="100"></canvas>
+        </div>
+
+        <!-- 🔹 Tabla de resultados -->
+        <h6 class="fw-bold mt-4">Listado de Congresistas Elegidos</h6>
+        <table class="table table-bordered mt-2">
+            <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Partido</th>
+                <th>Circunscripción</th>
+            </tr>
+            </thead>
+            <tbody id="tablaConformacion"></tbody>
+        </table>
+
+        <p class="text-end text-muted small" id="contadorConformacion"></p>
+
+        <button class="btn btn-outline-dark" onclick="volverMenu()">⬅ Volver al Menú</button>
+    </div>
+
+
+    <!-- ===========================
+       CASO DE USO 17 - CIRCUNSCRIPCIONES TERRITORIALES
+  =========================== -->
+    <div id="seccionTerritoriales" class="hidden">
+        <h4 class="mt-4">🗺️ Resultados - Circunscripciones Territoriales</h4>
+
+        <!-- 🔹 Filtro obligatorio -->
+        <div class="mb-3">
+            <label class="form-label fw-bold">Seleccione una Circunscripción</label>
+            <select id="filtroCircTerritorial" class="form-select"></select>
+        </div>
+
+        <!-- 🔹 Encabezado informativo -->
+        <div class="card p-3 mb-4 shadow-sm">
+            <h5 class="fw-bold text-primary">📋 Información General de la Circunscripción</h5>
+            <ul id="encabezadoCirc" class="list-unstyled mb-0"></ul>
+        </div>
+
+        <!-- 🔹 Gráfico -->
+        <div class="chart-container">
+            <h6 class="text-center mb-2">Distribución de Votos por Partido</h6>
+            <canvas id="chartTerritoriales" height="100"></canvas>
+        </div>
+
+        <!-- 🔹 Tabla -->
+        <h6 class="fw-bold mt-4">Resultados de Partidos</h6>
+        <table class="table table-bordered">
+            <thead>
+            <tr>
+                <th>Partido</th>
+                <th>Votos Obtenidos</th>
+                <th>Pasa Umbral</th>
+                <th>Curules Obtenidas</th>
+            </tr>
+            </thead>
+            <tbody id="tablaTerritorial"></tbody>
+        </table>
+
+        <p class="text-end text-muted small" id="contadorTerritorial"></p>
+
+        <button class="btn btn-outline-dark" onclick="volverMenu()">⬅ Volver al Menú</button>
+    </div>
+
+    <!-- ===========================
+         CASO DE USO 18 - CIRCUNSCRIPCIONES ESPECIALES
+    =========================== -->
+    <div id="seccionEspeciales" class="hidden">
+        <h4 class="mt-4">🌍 Resultados - Circunscripciones Especiales</h4>
+
+        <!-- 🔹 Filtro obligatorio -->
+        <div class="mb-3">
+            <label class="form-label fw-bold">Seleccione una Circunscripción Especial</label>
+            <select id="filtroCircEspecial" class="form-select"></select>
+        </div>
+
+        <!-- 🔹 Encabezado -->
+        <div class="card p-3 mb-4 shadow-sm">
+            <h5 class="fw-bold text-primary">📋 Información General de la Circunscripción</h5>
+            <ul id="encabezadoEspecial" class="list-unstyled mb-0"></ul>
+        </div>
+
+        <!-- 🔹 Gráfico -->
+        <div class="chart-container">
+            <h6 class="text-center mb-2">Distribución de Curules por Partido</h6>
+            <canvas id="chartEspeciales" height="100"></canvas>
+        </div>
+
+        <!-- 🔹 Tabla -->
+        <h6 class="fw-bold mt-4">Resultados de Partidos</h6>
+        <table class="table table-bordered">
+            <thead>
+            <tr>
+                <th>Partido</th>
+                <th>Votos Obtenidos</th>
+                <th>Curules Obtenidas</th>
+            </tr>
+            </thead>
+            <tbody id="tablaEspecial"></tbody>
+        </table>
+
+        <p class="text-end text-muted small" id="contadorEspecial"></p>
+
+        <button class="btn btn-outline-dark" onclick="volverMenu()">⬅ Volver al Menú</button>
+    </div>
+
+
+    <!-- ===========================
+         JAVASCRIPT PRINCIPAL
+    =========================== -->
+    <script>
+const API = "/api/resultados";
+let chartConformacion, chartTerritoriales, chartEspeciales;
+
+// Navegación
+function mostrarSeccion(nombre) {
+  document.querySelectorAll("div[id^='seccion']").forEach(div => div.classList.add("hidden"));
+  document.getElementById("menuPrincipal").classList.add("hidden");
+
+  if (nombre === "conformacion") { document.getElementById("seccionConformacion").classList.remove("hidden"); cargarConformacion(); }
+  if (nombre === "territoriales") { document.getElementById("seccionTerritoriales").classList.remove("hidden"); cargarTerritoriales(); }
+  if (nombre === "especiales") { document.getElementById("seccionEspeciales").classList.remove("hidden"); cargarEspeciales(); }
+}
+
+function volverMenu() {
+  document.querySelectorAll("div[id^='seccion']").forEach(div => div.classList.add("hidden"));
+  document.getElementById("menuPrincipal").classList.remove("hidden");
+}
+
+// =======================
+// BOTONES DEL MENÚ
+// =======================
+const btnProcesar = document.getElementById("btnProcesar");
+const btnExportar = document.getElementById("btnExportar");
+const statusLabel = document.getElementById("status");
+
+btnProcesar.addEventListener("click", async () => {
+  try {
+    btnProcesar.disabled = true;
+    statusLabel.textContent = "Procesando resultados...";
+    statusLabel.className = "text-warning";
+    const res = await fetch(`${API}/procesar`, { method: "POST" });
+    const data = await res.json();
+    if (data.ok) {
+      statusLabel.textContent = data.mensaje;
+      statusLabel.className = "text-success";
+    } else {
+      throw new Error(data.error);
+    }
+  } catch (err) {
+    console.error("Error al procesar resultados:", err.message);
+    statusLabel.textContent = "❌ Error al procesar resultados";
+    statusLabel.className = "text-danger";
+  } finally {
+    btnProcesar.disabled = false;
+  }
+});
+
+btnExportar.addEventListener("click", async () => {
+  try {
+    const [circ, part, cand] = await Promise.all([
+      fetch(`${API}/circunscripciones`).then(r => r.json()),
+      fetch(`${API}/partidos`).then(r => r.json()),
+      fetch(`${API}/candidatos`).then(r => r.json())
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(circ), "Circunscripciones");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(part), "Partidos");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(cand), "Candidatos");
+    XLSX.writeFile(wb, "Resultados_Completos.xlsx");
+  } catch (error) {
+    console.error("Error al exportar Excel:", error.message);
+    alert("❌ No se pudieron exportar los datos.");
+  }
+});
+
+// =======================
+// SECCIONES CON GRÁFICOS
+// =======================
+
+// 🏛️ Conformación Cámara (CU16)
+async function cargarConformacion() {
+  try {
+    const res = await fetch(`${API}/candidatos`);
+    const data = await res.json();
+
+    const filtroPartido = document.getElementById("filtroPartidoConformacion");
+    const filtroCirc = document.getElementById("filtroCircConformacion");
+    const tbody = document.getElementById("tablaConformacion");
+    const contador = document.getElementById("contadorConformacion");
+
+    // Llenar filtros con nombres
+    const partidos = [...new Set(data.map(c => c.nombre_partido))];
+    const circuns = [...new Set(data.map(c => c.nombre_circunscripcion))];
+
+    filtroPartido.innerHTML = `<option value="">Todos</option>` +
+      partidos.map(p => `<option value="${p}">${p}</option>`).join("");
+
+    filtroCirc.innerHTML = `<option value="">Todas</option>` +
+      circuns.map(c => `<option value="${c}">${c}</option>`).join("");
+
+    function aplicarFiltros() {
+      const selPartido = filtroPartido.value;
+      const selCirc = filtroCirc.value;
+
+      const filtrados = data.filter(c =>
+        (selPartido === "" || c.nombre_partido === selPartido) &&
+        (selCirc === "" || c.nombre_circunscripcion === selCirc)
+      );
+
+      tbody.innerHTML = filtrados.length
+        ? filtrados.map(c => `
+          <tr>
+            <td>${c.nombre_candidato}</td>
+            <td>${c.nombre_partido}</td>
+            <td>${c.nombre_circunscripcion}</td>
+          </tr>
+        `).join("")
+        : `<tr><td colspan="3" class="text-center text-muted">Sin registros</td></tr>`;
+
+      contador.textContent = `Total mostrados: ${filtrados.length}`;
+    }
+
+    filtroPartido.addEventListener("change", aplicarFiltros);
+    filtroCirc.addEventListener("change", aplicarFiltros);
+
+    aplicarFiltros();
+  } catch (error) {
+    console.error("Error al cargar conformación:", error);
+  }
+}
+
+
+// 🗺️ Resultados Circunscripciones Territoriales (CU17)
+async function cargarTerritoriales() {
+  try {
+    const res = await fetch(`${API}/resultados/territoriales`);
+    const data = await res.json();
+
+    const filtro = document.getElementById("filtroCircTerritorial");
+    const encabezado = document.getElementById("encabezadoCirc");
+    const tbody = document.getElementById("tablaTerritorial");
+    const contador = document.getElementById("contadorTerritorial");
+
+    // 🔹 Llenar filtro con nombres de circunscripciones
+    const circuns = [...new Set(data.map(c => c.nombre_circunscripcion))];
+    filtro.innerHTML = circuns.map(c => `<option value="${c}">${c}</option>`).join("");
+    filtro.selectedIndex = 0;
+
+    // 🔹 Mostrar resultados según la circunscripción seleccionada
+    function mostrarResultados() {
+      const selCirc = filtro.value;
+      const circ = data.find(c => c.nombre_circunscripcion === selCirc);
+      const partidos = data.filter(c => c.nombre_circunscripcion === selCirc);
+
+      // 🧾 Encabezado
+      encabezado.innerHTML = circ
+        ? `
+          <li><b>Nombre Circunscripción:</b> ${circ.nombre_circunscripcion}</li>
+          <li><b>Cantidad de Curules:</b> ${circ.curules_circunscripcion}</li>
+          <li><b>Cantidad de Votos Válidos:</b> ${circ.votos_validos}</li>
+          <li><b>Cuociente:</b> ${circ.cuociente}</li>
+          <li><b>Umbral:</b> ${circ.umbral}</li>
+          <li><b>Cifra Repartidora:</b> ${circ.cifra_repartidora}</li>
+        `
+        : `<li class="text-muted">Sin información disponible</li>`;
+
+      // 🗳️ Tabla de partidos
+      tbody.innerHTML = partidos.length
+        ? partidos.map(p => `
+          <tr>
+            <td>${p.nombre_partido}</td>
+            <td>${p.total_votos}</td>
+            <td>${p.paso_umbral}</td>
+            <td>${p.curules_ganados}</td>
+          </tr>
+        `).join("")
+        : `<tr><td colspan="4" class="text-center text-muted">Sin registros</td></tr>`;
+
+      contador.textContent = `Total de partidos: ${partidos.length}`;
+
+      // 📊 Gráfico
+      if (chartTerritoriales) chartTerritoriales.destroy();
+      chartTerritoriales = new Chart(document.getElementById("chartTerritoriales"), {
+        type: "bar",
+        data: {
+          labels: partidos.map(p => p.nombre_partido),
+          datasets: [{
+            label: "Votos Obtenidos",
+            data: partidos.map(p => p.total_votos),
+            backgroundColor: partidos.map(() => `hsl(${Math.random() * 360}, 70%, 55%)`)
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+    }
+
+    filtro.addEventListener("change", mostrarResultados);
+    mostrarResultados(); // mostrar el primero por defecto
+  } catch (error) {
+    console.error("Error al cargar resultados territoriales:", error);
+  }
+}
+
+// 🌍 Resultados Circunscripciones Especiales (CU18)
+async function cargarEspeciales() {
+  try {
+    const res = await fetch(`${API}/resultados/especiales`);
+    const data = await res.json();
+
+    const filtro = document.getElementById("filtroCircEspecial");
+    const encabezado = document.getElementById("encabezadoEspecial");
+    const tbody = document.getElementById("tablaEspecial");
+    const contador = document.getElementById("contadorEspecial");
+
+    // 🔹 Llenar filtro con nombres de circunscripciones especiales
+    const circuns = [...new Set(data.map(c => c.nombre_circunscripcion))];
+    filtro.innerHTML = circuns.map(c => `<option value="${c}">${c}</option>`).join("");
+    filtro.selectedIndex = 0;
+
+    function mostrarResultados() {
+      const selCirc = filtro.value;
+      const circ = data.find(c => c.nombre_circunscripcion === selCirc);
+      const partidos = data.filter(c => c.nombre_circunscripcion === selCirc);
+
+      // 🧾 Encabezado
+      encabezado.innerHTML = circ
+        ? `
+          <li><b>Nombre Circunscripción:</b> ${circ.nombre_circunscripcion}</li>
+          <li><b>Cantidad de Curules:</b> ${circ.curules_circunscripcion}</li>
+          <li><b>Cantidad de Votos Válidos:</b> ${circ.votos_validos}</li>
+        `
+        : `<li class="text-muted">Sin información disponible</li>`;
+
+      //  Tabla
+      tbody.innerHTML = partidos.length
+        ? partidos.map(p => `
+          <tr>
+            <td>${p.nombre_partido}</td>
+            <td>${p.total_votos}</td>
+            <td>${p.curules_ganados}</td>
+          </tr>
+        `).join("")
+        : `<tr><td colspan="3" class="text-center text-muted">Sin registros</td></tr>`;
+
+      contador.textContent = `Total de partidos: ${partidos.length}`;
+
+      // 📊 Gráfico circular de curules por partido
+      if (chartEspeciales) chartEspeciales.destroy();
+      chartEspeciales = new Chart(document.getElementById("chartEspeciales"), {
+        type: "pie",
+        data: {
+          labels: partidos.map(p => p.nombre_partido),
+          datasets: [{
+            label: "Curules Obtenidas",
+            data: partidos.map(p => p.curules_ganados),
+            backgroundColor: partidos.map(() => `hsl(${Math.random() * 360}, 70%, 55%)`)
+          }]
+        },
+        options: { responsive: true, plugins: { legend: { position: "bottom" } } }
+      });
+    }
+
+    filtro.addEventListener("change", mostrarResultados);
+    mostrarResultados(); // inicial
+  } catch (error) {
+    console.error("Error al cargar resultados especiales:", error);
+  }
+}
+</script>
+</body>
+</html>

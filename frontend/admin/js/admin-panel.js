@@ -26,6 +26,15 @@ function badgeEstado(info) {
   const badge = document.getElementById("estadoBadge");
   const txt   = document.getElementById("estadoText");
   const btnRecalc = document.getElementById("btnRecalcular");
+  if (btnRecalcular) {
+    btnRecalcular.addEventListener("click", () => {
+      // Si está deshabilitado, no hace nada
+      if (btnRecalcular.disabled) return;
+
+      // Abrir dashboard de resultados en pestaña nueva
+      window.open("/admin/resultados.html", "_blank", "noopener");
+    });
+  }
 
   if (!badge || !txt) return;
 
@@ -63,6 +72,42 @@ function badgeEstado(info) {
 }
 
 // -------------------- cargar datos desde el backend --------------------
+function actualizarEstadoJornada(info) {
+  const badge = document.getElementById("estadoBadge");
+  const txt   = document.getElementById("estadoText");
+  const btnRecalcular = document.getElementById("btnRecalcular");
+
+  const ahora = new Date();
+  let abierta = false;
+
+  if (info && info.inicio && info.fin) {
+    const ini = new Date(info.inicio);
+    const fin = new Date(info.fin);
+    abierta = (ahora >= ini && ahora <= fin);
+  }
+
+  if (!info || !info.inicio || !info.fin) {
+    // Sin jornada configurada
+    badge.textContent = "Cerrada";
+    badge.className = "badge bg-danger";
+    txt.textContent = "No hay jornada configurada.";
+    if (btnRecalcular) btnRecalcular.disabled = true;
+    return;
+  }
+
+  if (abierta) {
+    badge.textContent = "Abierta";
+    badge.className = "badge bg-success";
+    txt.textContent = `La jornada está en curso. Cierra: ${new Date(info.fin).toLocaleString("es-CO")}`;
+    if (btnRecalcular) btnRecalcular.disabled = true;
+  } else {
+    badge.textContent = "Cerrada";
+    badge.className = "badge bg-danger";
+    txt.textContent = "La jornada ya finalizó.";
+    if (btnRecalcular) btnRecalcular.disabled = false; // 🔓 ahora sí se puede abrir resultados
+  }
+}
+
 async function cargar() {
   const flash = document.getElementById("flash");
   if (flash) {
@@ -89,7 +134,7 @@ async function cargar() {
   // 2) estado calculado (abierta/cerrada/etc)
   const r2  = await fetch(API_ESTADO);
   const est = await r2.json();
-  badgeEstado(est);
+  actualizarEstadoJornada(est);
 
   // 3) mensaje verde de configuración
   if (flash) {
@@ -105,6 +150,43 @@ async function cargar() {
     }
   }
 }
+
+function actualizarEstadoJornada(info) {
+  const badge = document.getElementById("estadoBadge");
+  const txt   = document.getElementById("estadoText");
+  const btnRecalcular = document.getElementById("btnRecalcular");
+
+  const ahora = new Date();
+  let abierta = false;
+
+  if (info && info.inicio && info.fin) {
+    const ini = new Date(info.inicio);
+    const fin = new Date(info.fin);
+    abierta = (ahora >= ini && ahora <= fin);
+  }
+
+  if (!info || !info.inicio || !info.fin) {
+    // Sin jornada configurada
+    badge.textContent = "Cerrada";
+    badge.className = "badge bg-danger";
+    txt.textContent = "No hay jornada configurada.";
+    if (btnRecalcular) btnRecalcular.disabled = true;
+    return;
+  }
+
+  if (abierta) {
+    badge.textContent = "Abierta";
+    badge.className = "badge bg-success";
+    txt.textContent = `La jornada está en curso. Cierra: ${new Date(info.fin).toLocaleString("es-CO")}`;
+    if (btnRecalcular) btnRecalcular.disabled = true;
+  } else {
+    badge.textContent = "Cerrada";
+    badge.className = "badge bg-danger";
+    txt.textContent = "La jornada ya finalizó.";
+    if (btnRecalcular) btnRecalcular.disabled = false; // 🔓 ahora sí se puede abrir resultados
+  }
+}
+
 
 // -------------------- envío del formulario --------------------
 document.getElementById("frmJornada")?.addEventListener("submit", async (e) => {

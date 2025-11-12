@@ -99,12 +99,8 @@ router.post("/resultados/recalcular", requireAdmin, async (_req, res) => {
 });
 
 router.post("/logout", (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      console.error("Error al cerrar sesión:", err);
-      return res.status(500).json({ ok: false, message: "No se pudo cerrar la sesión" });
-    }
-    res.clearCookie("sid");
+  req.session.destroy(() => {
+    res.clearCookie("sid", { path: "/" }); // <- igual al name del session
     res.json({ ok: true });
   });
 });

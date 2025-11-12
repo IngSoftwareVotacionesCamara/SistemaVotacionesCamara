@@ -72,3 +72,29 @@ document.getElementById("btnLogout")?.addEventListener("click", async ()=>{
 });
 
 cargar();
+
+window.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("btnLogout");
+  if (!btn) return;
+
+  btn.addEventListener("click", async () => {
+    try {
+      const res = await fetch("/api/admin/logout", {
+        method: "POST",
+        credentials: "include", // envía la cookie 'sid'
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.ok) {
+        // Limpieza cliente y redirección
+        try { sessionStorage.clear(); localStorage.clear(); } catch {}
+        location.replace("/admin/login.html");
+      } else {
+        alert(data.message || "No se pudo cerrar sesión. Intenta nuevamente.");
+      }
+    } catch (err) {
+      console.error("Logout error:", err);
+      alert("Error de conexión al cerrar sesión.");
+    }
+  });
+});

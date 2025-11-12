@@ -21,97 +21,52 @@ function niceDateTime(ts) {
   });
 }
 
-// -------------------- badge de estado --------------------
-function badgeEstado(info) {
-  const badge = document.getElementById("estadoBadge");
-  const txt   = document.getElementById("estadoText");
-  const btnRecalc = document.getElementById("btnRecalcular");
-  if (btnRecalcular) {
-    btnRecalcular.addEventListener("click", () => {
-      // Si está deshabilitado, no hace nada
-      if (btnRecalcular.disabled) return;
+// -------------------- estado jornada + botón recalcular --------------------
+function actualizarEstadoJornada(info) {
+  const badge        = document.getElementById("estadoBadge");
+  const txt          = document.getElementById("estadoText");
+  const btnRecalcular = document.getElementById("btnRecalcular");
+  if (!badge || !txt || !btnRecalcular) return;
 
-      // Abrir dashboard de resultados en pestaña nueva
-      window.open("/admin/resultados.html", "_blank", "noopener");
-    });
-  }
-
-  if (!badge || !txt) return;
+  const ahora = new Date();
 
   if (!info || !info.inicio || !info.fin) {
-    // jornada sin configurar (null / null)
-    badge.textContent = "Cerrada";
-    badge.className   = "badge bg-secondary";
-    txt.textContent   = "La jornada no está configurada.";
-    if (btnRecalc) btnRecalc.disabled = true;
+    // Sin jornada configurada
+    badge.textContent        = "Cerrada";
+    badge.className          = "badge bg-secondary";
+    txt.textContent          = "La jornada no está configurada.";
+    btnRecalcular.disabled   = true;
     return;
   }
 
-  const ahora  = new Date();
-  const ini    = new Date(info.inicio);
-  const fin    = new Date(info.fin);
+  const ini = new Date(info.inicio);
+  const fin = new Date(info.fin);
 
   if (ahora < ini) {
-    badge.textContent = "Programada";
-    badge.className   = "badge bg-info";
-    const diffMs      = ini - ahora;
-    const mins        = Math.floor(diffMs / 60000);
-    txt.textContent   = `La jornada empezará en aproximadamente ${mins} minuto(s).`;
-    if (btnRecalc) btnRecalc.disabled = true;
+    badge.textContent  = "Programada";
+    badge.className    = "badge bg-info";
+    const diffMs       = ini - ahora;
+    const mins         = Math.max(1, Math.floor(diffMs / 60000));
+    txt.textContent    = `La jornada empezará en aproximadamente ${mins} minuto(s).`;
+    btnRecalcular.disabled = true;
   } else if (ahora >= ini && ahora <= fin) {
-    badge.textContent = "Abierta";
-    badge.className   = "badge bg-success";
-    txt.textContent   = `La jornada está en curso. Cierra el ${niceDateTime(info.fin)}.`;
-    if (btnRecalc) btnRecalc.disabled = true;
+    badge.textContent  = "Abierta";
+    badge.className    = "badge bg-success";
+    txt.textContent    = `La jornada está en curso. Cierra el ${niceDateTime(info.fin)}.`;
+    btnRecalcular.disabled = true;
   } else {
-    badge.textContent = "Cerrada";
-    badge.className   = "badge bg-danger";
-    txt.textContent   = "La jornada ya finalizó.";
-    if (btnRecalc) btnRecalc.disabled = false;
+    badge.textContent  = "Cerrada";
+    badge.className    = "badge bg-danger";
+    txt.textContent    = "La jornada ya finalizó.";
+    btnRecalcular.disabled = false;   // ✅ aquí se habilita el botón
   }
 }
 
 // -------------------- cargar datos desde el backend --------------------
-function actualizarEstadoJornada(info) {
-  const badge = document.getElementById("estadoBadge");
-  const txt   = document.getElementById("estadoText");
-  const btnRecalcular = document.getElementById("btnRecalcular");
-
-  const ahora = new Date();
-  let abierta = false;
-
-  if (info && info.inicio && info.fin) {
-    const ini = new Date(info.inicio);
-    const fin = new Date(info.fin);
-    abierta = (ahora >= ini && ahora <= fin);
-  }
-
-  if (!info || !info.inicio || !info.fin) {
-    // Sin jornada configurada
-    badge.textContent = "Cerrada";
-    badge.className = "badge bg-danger";
-    txt.textContent = "No hay jornada configurada.";
-    if (btnRecalcular) btnRecalcular.disabled = true;
-    return;
-  }
-
-  if (abierta) {
-    badge.textContent = "Abierta";
-    badge.className = "badge bg-success";
-    txt.textContent = `La jornada está en curso. Cierra: ${new Date(info.fin).toLocaleString("es-CO")}`;
-    if (btnRecalcular) btnRecalcular.disabled = true;
-  } else {
-    badge.textContent = "Cerrada";
-    badge.className = "badge bg-danger";
-    txt.textContent = "La jornada ya finalizó.";
-    if (btnRecalcular) btnRecalcular.disabled = false; // 🔓 ahora sí se puede abrir resultados
-  }
-}
-
 async function cargar() {
   const flash = document.getElementById("flash");
   if (flash) {
-    flash.className = "";
+    flash.className   = "";
     flash.textContent = "";
   }
 
@@ -151,43 +106,6 @@ async function cargar() {
   }
 }
 
-function actualizarEstadoJornada(info) {
-  const badge = document.getElementById("estadoBadge");
-  const txt   = document.getElementById("estadoText");
-  const btnRecalcular = document.getElementById("btnRecalcular");
-
-  const ahora = new Date();
-  let abierta = false;
-
-  if (info && info.inicio && info.fin) {
-    const ini = new Date(info.inicio);
-    const fin = new Date(info.fin);
-    abierta = (ahora >= ini && ahora <= fin);
-  }
-
-  if (!info || !info.inicio || !info.fin) {
-    // Sin jornada configurada
-    badge.textContent = "Cerrada";
-    badge.className = "badge bg-danger";
-    txt.textContent = "No hay jornada configurada.";
-    if (btnRecalcular) btnRecalcular.disabled = true;
-    return;
-  }
-
-  if (abierta) {
-    badge.textContent = "Abierta";
-    badge.className = "badge bg-success";
-    txt.textContent = `La jornada está en curso. Cierra: ${new Date(info.fin).toLocaleString("es-CO")}`;
-    if (btnRecalcular) btnRecalcular.disabled = true;
-  } else {
-    badge.textContent = "Cerrada";
-    badge.className = "badge bg-danger";
-    txt.textContent = "La jornada ya finalizó.";
-    if (btnRecalcular) btnRecalcular.disabled = false; // 🔓 ahora sí se puede abrir resultados
-  }
-}
-
-
 // -------------------- envío del formulario --------------------
 document.getElementById("frmJornada")?.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -217,7 +135,7 @@ document.getElementById("frmJornada")?.addEventListener("submit", async (e) => {
     return;
   }
 
-  // --- 1) Guardar en el backend ---
+  // --- Guardar en el backend ---
   try {
     const r = await fetch(`${API}/jornada`, {
       method: "PUT",
@@ -234,10 +152,10 @@ document.getElementById("frmJornada")?.addEventListener("submit", async (e) => {
   } catch (err) {
     console.error("Error guardando jornada:", err);
     if (msg) msg.textContent = "Error de conexión al guardar.";
-    return; // importante: aquí paramos, aunque el PUT en realidad sea el que falle
+    return;
   }
 
-  // --- 2) Recargar UI (aunque falle, ya no mostramos 'error al guardar') ---
+  // --- Recargar UI ---
   try {
     await cargar();
   } catch (err) {
@@ -245,25 +163,18 @@ document.getElementById("frmJornada")?.addEventListener("submit", async (e) => {
   }
 });
 
-// -------------------- botón Recalcular resultados (stub) --------------------
-document.getElementById("btnRecalcular")?.addEventListener("click", async () => {
-  const msgRes = document.getElementById("msgRes");
-  if (msgRes) msgRes.textContent = "";
+// -------------------- botón Recalcular resultados --------------------
+const btnRecalcular = document.getElementById("btnRecalcular");
+if (btnRecalcular) {
+  btnRecalcular.addEventListener("click", () => {
+    // si está deshabilitado, no hace nada
+    if (btnRecalcular.disabled) return;
+    // abrir dashboard de resultados en pestaña nueva
+    window.open("/admin/resultados.html", "_blank", "noopener");
+  });
+}
 
-  try {
-    const r = await fetch(`${API}/resultados/recalcular`, {
-      method: "POST",
-      credentials: "include",
-    });
-    const data = await r.json().catch(() => ({}));
-    if (msgRes) msgRes.textContent = data.message || "Recalculo disparado.";
-  } catch (err) {
-    console.error("Error recalculando resultados:", err);
-    if (msgRes) msgRes.textContent = "Error de conexión al recalcular.";
-  }
-});
-
-// -------------------- botón Cerrar sesión (aunque no lo usemos aún) --------------------
+// -------------------- botón Cerrar sesión --------------------
 document.getElementById("btnLogout")?.addEventListener("click", async () => {
   try {
     const res = await fetch("/api/admin/logout", {

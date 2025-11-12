@@ -1,199 +1,208 @@
 // frontend/admin/js/admin-panel.js
-const API_ADMIN = "/api/admin";
+const API        = "/api/admin";
+const API_ESTADO = "/api/estado/jornada";
 
-const inicioInput   = document.getElementById("inicio");
-const finInput      = document.getElementById("fin");
-const msgElem       = document.getElementById("msg");
-const flashElem     = document.getElementById("flash");
-const estadoBadge   = document.getElementById("estadoBadge");
-const estadoText    = document.getElementById("estadoText");
-const btnRecalcular = document.getElementById("btnRecalcular");
-const btnLogout     = document.getElementById("btnLogout");
-
-/* ------------ helpers de formato ------------ */
-
-// Convierte "2025-11-12T10:36:00.000000" → "2025-11-12T10:36"
-function toInputValue(dbString) {
-  if (!dbString) return "";
-  return dbString.substring(0, 16);
+// -------------------- helpers de fecha --------------------
+function toLocalInput(ts) {
+  if (!ts) return "";
+  const d   = new Date(ts);
+  const pad = (n) => String(n).padStart(2, "0");
+  // yyyy-MM-ddTHH:mm (formato que espera <input type="datetime-local">)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}`;
 }
 
-// Convierte "2025-11-12T10:36" → "12/11/2025, 10:36"
-function prettyFromInput(inputValue) {
-  if (!inputValue) return "";
-  const [datePart, timePart] = inputValue.split("T"); // "YYYY-MM-DD", "HH:MM"
-  const [yyyy, mm, dd] = datePart.split("-");
-  const [hh, min] = timePart.split(":");
-  return `${dd}/${mm}/${yyyy}, ${hh}:${min}`;
+function niceDateTime(ts) {
+  if (!ts) return "—";
+  return new Date(ts).toLocaleString("es-CO", {
+    dateStyle: "short",
+    timeStyle: "medium",
+  });
 }
 
-/* ------------ pintar estado / tarjeta verde ------------ */
+// -------------------- badge de estado --------------------
+function badgeEstado(info) {
+  const badge = document.getElementById("estadoBadge");
+  const txt   = document.getElementById("estadoText");
+  const btnRecalc = document.getElementById("btnRecalcular");
 
-function renderEstado(inicioDb, finDb) {
-  // limpiar
-  flashElem.innerHTML   = "";
-  estadoBadge.textContent = "—";
-  estadoBadge.className   = "badge bg-secondary";
-  estadoText.textContent  = "";
-  if (btnRecalcular) btnRecalcular.disabled = true;
+  if (!badge || !txt) return;
 
-  if (!inicioDb || !finDb) {
-    estadoText.textContent = "La jornada no está configurada.";
+  if (!info || !info.inicio || !info.fin) {
+    // jornada sin configurar (null / null)
+    badge.textContent = "Cerrada";
+    badge.className   = "badge bg-secondary";
+    txt.textContent   = "La jornada no está configurada.";
+    if (btnRecalc) btnRecalc.disabled = true;
     return;
   }
 
-  const inicioInputVal = toInputValue(inicioDb);
-  const finInputVal    = toInputValue(finDb);
+  const ahora  = new Date();
+  const ini    = new Date(info.inicio);
+  const fin    = new Date(info.fin);
 
-  const inicioNice = prettyFromInput(inicioInputVal);
-  const finNice    = prettyFromInput(finInputVal);
-
-  // Tarjeta verde con el rango EXACTO que configuraste
-  flashElem.innerHTML = `
-    <div class="alert alert-success py-2 mb-3">
-      Jornada de votación configurada desde <strong>${inicioNice}</strong>
-      hasta <strong>${finNice}</strong>.
-    </div>
-  `;
-
-  const ahora      = new Date();
-  const inicioDate = new Date(inicioDb);
-  const finDate    = new Date(finDb);
-
-  if (ahora < inicioDate) {
-    estadoBadge.textContent = "Programada";
-    estadoBadge.className   = "badge bg-warning text-dark";
-    estadoText.textContent  = "La jornada aún no inicia.";
-  } else if (ahora >= inicioDate && ahora <= finDate) {
-    estadoBadge.textContent = "Abierta";
-    estadoBadge.className   = "badge bg-success";
-    estadoText.textContent  = "La jornada está en curso.";
+  if (ahora < ini) {
+    badge.textContent = "Programada";
+    badge.className   = "badge bg-info";
+    const diffMs      = ini - ahora;
+    const mins        = Math.floor(diffMs / 60000);
+    txt.textContent   = `La jornada empezará en aproximadamente ${mins} minuto(s).`;
+    if (btnRecalc) btnRecalc.disabled = true;
+  } else if (ahora >= ini && ahora <= fin) {
+    badge.textContent = "Abierta";
+    badge.className   = "badge bg-success";
+    txt.textContent   = `La jornada está en curso. Cierra el ${niceDateTime(info.fin)}.`;
+    if (btnRecalc) btnRecalc.disabled = true;
   } else {
-    estadoBadge.textContent = "Cerrada";
-    estadoBadge.className   = "badge bg-danger";
-    estadoText.textContent  = "La jornada ya finalizó.";
-    if (btnRecalcular) btnRecalcular.disabled = false;
+    badge.textContent = "Cerrada";
+    badge.className   = "badge bg-danger";
+    txt.textContent   = "La jornada ya finalizó.";
+    if (btnRecalc) btnRecalc.disabled = false;
   }
 }
 
-/* ------------ cargar jornada desde el backend ------------ */
+// -------------------- cargar datos desde el backend --------------------
+async function cargar() {
+  const flash = document.getElementById("flash");
+  if (flash) {
+    flash.className = "";
+    flash.textContent = "";
+  }
 
-async function cargarJornada() {
-  msgElem.textContent = "";
-
-  const res = await fetch(`${API_ADMIN}/jornada`, {
-    credentials: "include",
-  });
-
-  if (res.status === 401) {
-    // sesión expirada o sin login de admin
+  // 1) jornada guardada
+  const r1 = await fetch(`${API}/jornada`, { credentials: "include" });
+  if (r1.status === 401) {
     window.location.replace("/admin/login.html");
     return;
   }
+  const jor = await r1.json();
 
-  const data = await res.json();
-  const { inicio, fin } = data;
+  const inicioInput = document.getElementById("inicio");
+  const finInput    = document.getElementById("fin");
 
-  // rellenar inputs exactamente con lo que viene de la BD
-  inicioInput.value = toInputValue(inicio);
-  finInput.value    = toInputValue(fin);
+  if (inicioInput && finInput) {
+    inicioInput.value = toLocalInput(jor.inicio);
+    finInput.value    = toLocalInput(jor.fin);
+  }
 
-  renderEstado(inicio, fin);
+  // 2) estado calculado (abierta/cerrada/etc)
+  const r2  = await fetch(API_ESTADO);
+  const est = await r2.json();
+  badgeEstado(est);
+
+  // 3) mensaje verde de configuración
+  if (flash) {
+    if (jor.inicio && jor.fin) {
+      flash.className = "alert alert-success";
+      flash.textContent =
+        `Jornada de votación configurada desde ${niceDateTime(
+          jor.inicio
+        )} hasta ${niceDateTime(jor.fin)}.`;
+    } else {
+      flash.className = "alert alert-secondary";
+      flash.textContent = "Jornada de votación sin configurar.";
+    }
+  }
 }
 
-/* ------------ validación y guardado ------------ */
-
+// -------------------- envío del formulario --------------------
 document.getElementById("frmJornada")?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  msgElem.textContent = "";
 
-  const inicio = inicioInput.value; // "YYYY-MM-DDTHH:MM"
-  const fin    = finInput.value;
+  const msg = document.getElementById("msg");
+  if (msg) msg.textContent = "";
 
-  if (!inicio || !fin) {
-    msgElem.textContent = "Debes seleccionar inicio y fin.";
+  const inicioVal = document.getElementById("inicio")?.value;
+  const finVal    = document.getElementById("fin")?.value;
+
+  // validaciones básicas en el cliente
+  if (!inicioVal || !finVal) {
+    if (msg) msg.textContent = "Debes indicar inicio y fin.";
     return;
   }
 
-  const ahora      = new Date();
-  const inicioDate = new Date(inicio);
-  const finDate    = new Date(fin);
+  const inicio = new Date(inicioVal);
+  const fin    = new Date(finVal);
+  const ahora  = new Date();
 
-  if (inicioDate <= ahora) {
-    msgElem.textContent = "La fecha/hora de inicio debe ser mayor a la hora actual.";
+  if (inicio <= ahora) {
+    if (msg) msg.textContent = "El inicio debe ser en una fecha/hora futura.";
+    return;
+  }
+  if (fin <= inicio) {
+    if (msg) msg.textContent = "La hora de fin debe ser mayor a la de inicio.";
     return;
   }
 
-  if (finDate <= inicioDate) {
-    msgElem.textContent = "La fecha/hora de fin debe ser mayor a la de inicio.";
-    return;
-  }
-
+  // --- 1) Guardar en el backend ---
   try {
-    const res = await fetch(`${API_ADMIN}/jornada`, {
+    const r = await fetch(`${API}/jornada`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ inicio, fin }),
+      body: JSON.stringify({ inicio: inicioVal, fin: finVal }),
     });
 
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      msgElem.textContent = data.message || "Error al guardar la jornada.";
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      if (msg) msg.textContent = data.message || "Error al guardar la jornada.";
       return;
     }
-
-    // recargar con los valores que quedaron en la BD
-    await cargarJornada();
   } catch (err) {
-    console.error(err);
-    msgElem.textContent = "Error de conexión al guardar.";
+    console.error("Error guardando jornada:", err);
+    if (msg) msg.textContent = "Error de conexión al guardar.";
+    return; // importante: aquí paramos, aunque el PUT en realidad sea el que falle
+  }
+
+  // --- 2) Recargar UI (aunque falle, ya no mostramos 'error al guardar') ---
+  try {
+    await cargar();
+  } catch (err) {
+    console.error("Error recargando jornada:", err);
   }
 });
 
-/* ------------ botón Recalcular (stub) ------------ */
+// -------------------- botón Recalcular resultados (stub) --------------------
+document.getElementById("btnRecalcular")?.addEventListener("click", async () => {
+  const msgRes = document.getElementById("msgRes");
+  if (msgRes) msgRes.textContent = "";
 
-btnRecalcular?.addEventListener("click", async () => {
   try {
-    const res = await fetch(`${API_ADMIN}/resultados/recalcular`, {
+    const r = await fetch(`${API}/resultados/recalcular`, {
+      method: "POST",
+      credentials: "include",
+    });
+    const data = await r.json().catch(() => ({}));
+    if (msgRes) msgRes.textContent = data.message || "Recalculo disparado.";
+  } catch (err) {
+    console.error("Error recalculando resultados:", err);
+    if (msgRes) msgRes.textContent = "Error de conexión al recalcular.";
+  }
+});
+
+// -------------------- botón Cerrar sesión (aunque no lo usemos aún) --------------------
+document.getElementById("btnLogout")?.addEventListener("click", async () => {
+  try {
+    const res = await fetch("/api/admin/logout", {
       method: "POST",
       credentials: "include",
     });
     const data = await res.json().catch(() => ({}));
-    document.getElementById("msgRes").textContent =
-      data.message || "Recalculo disparado.";
+    if (res.ok && data.ok) {
+      try {
+        sessionStorage.clear();
+        localStorage.clear();
+      } catch {}
+      location.replace("/admin/login.html");
+    } else {
+      alert(data.message || "No se pudo cerrar sesión.");
+    }
   } catch (err) {
-    console.error(err);
-    document.getElementById("msgRes").textContent = "Error al recalcular.";
+    console.error("Logout error:", err);
+    alert("Error de conexión al cerrar sesión.");
   }
 });
 
-/* ------------ botón Cerrar sesión (aunque lo dejemos para después) ------------ */
-btnLogout?.addEventListener("click", async () => {
-  try {
-    await fetch(`${API_ADMIN}/logout`, {
-      method: "POST",
-      credentials: "include",
-    });
-  } catch (e) {
-    console.error(e);
-  } finally {
-    window.location.replace("/admin/login.html");
-  }
-});
-
-/* ------------ inicialización ------------ */
-
-// Opcional: evitar seleccionar fechas pasadas en el picker
-(function setMinInputs() {
-  const now = new Date();
-  const pad = (n) => String(n).padStart(2, "0");
-  const nowStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
-    now.getDate()
-  )}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
-
-  inicioInput.min = nowStr;
-  finInput.min    = nowStr;
-})();
-
-cargarJornada();
+// Cargar todo al entrar
+cargar().catch((err) => console.error("Error inicial cargando jornada:", err));

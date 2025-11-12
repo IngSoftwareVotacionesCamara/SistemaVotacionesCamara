@@ -89,33 +89,33 @@ router.get("/jornada", requireAdmin, async (_req, res) => {
 
 // PUT actualizar
 router.put("/jornada", requireAdmin, async (req, res) => {
+  const { inicio, fin } = req.body || {};
+
+  if (!inicio || !fin) {
+    return res.status(400).json({ message: "inicio y fin son obligatorios" });
+  }
+
+  const q = `
+    INSERT INTO votaciones.jornada (id, inicio, fin, updated_at)
+    VALUES (
+      1,
+      $1::timestamp AT TIME ZONE 'America/Bogota',
+      $2::timestamp AT TIME ZONE 'America/Bogota',
+      now()
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      inicio     = EXCLUDED.inicio,
+      fin        = EXCLUDED.fin,
+      updated_at = now()
+    RETURNING inicio, fin, updated_at;
+  `;
+
   try {
-    const { inicio, fin } = req.body || {};
-
-    if (!inicio || !fin) {
-      return res.status(400).json({ message: "inicio y fin son obligatorios" });
-    }
-
-    const q = `
-      INSERT INTO votaciones.jornada (id, inicio, fin, updated_at)
-      VALUES (1, $1::timestamp, $2::timestamp, now())
-      ON CONFLICT (id) DO UPDATE
-        SET inicio    = EXCLUDED.inicio,
-            fin       = EXCLUDED.fin,
-            updated_at = now()
-      RETURNING
-        inicio::text AS inicio,
-        fin::text    AS fin;
-    `;
-
     const r = await pool.query(q, [inicio, fin]);
-    const { inicio: outInicio, fin: outFin } = r.rows[0];
-
-    // devolvemos exactamente lo que quedó en la BD
-    return res.json({ inicio: outInicio, fin: outFin });
+    return res.json(r.rows[0]);
   } catch (e) {
-    console.error("ADMIN JORNADA PUT ERROR:", e);
-    return res.status(500).json({ message: "Error al guardar jornada" });
+    console.error("ERROR GUARDANDO JORNADA:", e);
+    return res.status(500).json({ message: "Error interno al guardar jornada" });
   }
 });
 

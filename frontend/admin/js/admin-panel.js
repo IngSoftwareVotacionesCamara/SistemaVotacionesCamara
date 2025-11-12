@@ -183,11 +183,33 @@ document.getElementById("frmJornada")?.addEventListener("submit", async (e) => {
   const msg = document.getElementById("msg");
   if (msg) msg.textContent = "";
 
-  const inicio = document.getElementById("inicio").value;
-  const fin    = document.getElementById("fin").value;
+  const inicioStr = document.getElementById("inicio").value;
+  const finStr    = document.getElementById("fin").value;
 
-  if (!inicio || !fin) {
+  if (!inicioStr || !finStr) {
     if (msg) msg.textContent = "Inicio y fin son obligatorios.";
+    return;
+  }
+
+  const inicio = new Date(inicioStr);
+  const fin    = new Date(finStr);
+  const ahora  = new Date();
+
+  // 1) inicio > ahora
+  if (inicio <= ahora) {
+    if (msg) {
+      msg.textContent =
+        "La fecha y hora de inicio deben ser posteriores al momento actual.";
+    }
+    return;
+  }
+
+  // 2) fin > inicio
+  if (fin <= inicio) {
+    if (msg) {
+      msg.textContent =
+        "La fecha y hora de fin deben ser posteriores a la fecha de inicio.";
+    }
     return;
   }
 
@@ -196,7 +218,7 @@ document.getElementById("frmJornada")?.addEventListener("submit", async (e) => {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ inicio, fin }),
+      body: JSON.stringify({ inicio: inicioStr, fin: finStr }),
     });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) {
@@ -250,5 +272,31 @@ document.getElementById("btnLogout")?.addEventListener("click", async () => {
   }
 });
 
+function setMinDates() {
+  const inicioInput = document.getElementById("inicio");
+  const finInput    = document.getElementById("fin");
+  if (!inicioInput || !finInput) return;
+
+  // now -> yyyy-MM-ddTHH:mm
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  const nowStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
+    now.getDate()
+  )}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+  inicioInput.min = nowStr;
+  finInput.min    = nowStr;
+
+  // cuando el usuario cambie inicio, fin.min debe ser como mínimo ese inicio
+  inicioInput.addEventListener("change", () => {
+    if (inicioInput.value) {
+      finInput.min = inicioInput.value;
+    }
+  });
+}
+
 // Cargar estado al inicio
-window.addEventListener("DOMContentLoaded", cargar);
+window.addEventListener("DOMContentLoaded", () => {
+  setMinDates();
+  cargar();
+});

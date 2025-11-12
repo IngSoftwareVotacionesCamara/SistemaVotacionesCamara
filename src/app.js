@@ -14,6 +14,9 @@ import catalogosRoutes from "./routes/catalogos.js";
 import votoRouter from './routes/voto.js';
 import electoresRouter from './routes/electores.js';
 import certificadoRouter from "./routes/certificado.js";
+import session from "express-session";
+import adminRouter from "./routes/admin.js";
+import estadoRouter from "./routes/estado.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const API_URL = "https://sistemavotacionescamara.onrender.com/api";
@@ -25,6 +28,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static("frontend"));
+app.use(session({
+  secret: process.env.SESSION_SECRET || "super-secret",
+  resave: false,
+  saveUninitialized: false,
+  cookie: { sameSite: "lax" }
+}));
 
 // Rutas
 app.use("/api", authRoutes);
@@ -33,6 +42,9 @@ app.use("/api", catalogosRoutes);
 app.use('/api', votoRouter);
 app.use('/api', electoresRouter);
 app.use("/api", certificadoRouter);
+app.use("/api/estado", estadoRouter);
+app.use("/api/admin", adminRouter);
+app.use("/admin", express.static("frontend/admin"));
 
 // Salud
 app.get("/api/health", (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));

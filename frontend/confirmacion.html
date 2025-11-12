@@ -7,8 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
     <style>
     :root{
-      --primary:#003366; --bg:#f4f7fb; --ink:#172033; --muted:#6b778c; --line:#d8e1ee; --white:#fff;
-      --btn:#004884;
+      --primary:#003366; --bg:#f4f7fb; --ink:#172033; --muted:#6b778c; --line:#d8e1ee; --white:#fff; --btn:#004884;
     }
     body{background:var(--bg); color:var(--ink)}
     .header{background:var(--primary); color:#fff; padding:12px 28px; display:flex; align-items:center; justify-content:space-between}
@@ -61,65 +60,70 @@
     </div>
 </div>
 
-<!-- jsPDF + generador del certificado -->
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
-<script src="js/certificado.js"></script>
+<!-- jsPDF + generador del certificado (frontend/js/certificado.js) -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
+<script src="js/certificado.js" defer></script>
 
 <script>
-    // ===== Estado (elector en sesión) =====
-    const elector = (() => {
-      try { return JSON.parse(sessionStorage.getItem("elector") || "null"); }
-      catch { return null; }
-    })();
+    window.addEventListener('DOMContentLoaded', () => {
+      // ===== Estado (elector en sesión) =====
+      const elector = (() => { try { return JSON.parse(sessionStorage.getItem("elector") || "null"); } catch { return null; } })();
 
-    // Pinta identidad (sin datos del voto)
-    (function pintarInfo(){
-      const el = document.getElementById("infoElector");
-      if (!elector) { el.textContent = "Sesión expirada."; return; }
-      el.textContent = `Elector: ${elector.nombres || ""} (ID: ${elector.id_elector || ""})`;
-    })();
-
-    // ===== UI =====
-    const btnCert   = document.getElementById("btnCert");
-    const btnSalir  = document.getElementById("btnSalir");
-    const alertCert = document.getElementById("alertCert");
-
-    // Descarga certificado → habilita "Salir" (azul)
-    btnCert?.addEventListener("click", async () => {
-      try {
-        await window.generarCertificado(elector); // usa la función del archivo certificado.js
-        sessionStorage.setItem("cert_descargado", "1");
-
-        alertCert.className = "alert alert-success py-2 px-3 mb-3";
-        alertCert.textContent = "Certificado descargado correctamente. Ya puedes salir.";
-
-        btnSalir.disabled = false;
-        btnSalir.classList.remove("btn-outline-secondary");
-        btnSalir.classList.add("btn-primary", "text-white");
-      } catch (e) {
-        console.error(e);
-        alertCert.className = "alert alert-danger py-2 px-3 mb-3";
-        alertCert.textContent = "No se pudo generar el certificado. Intenta nuevamente.";
+      // Guardia: si no hay elector, vuelve al inicio
+      if (!elector || !elector.id_elector) {
+        window.location.replace("/");
+        return;
       }
-    });
 
-    // Salir sólo si descargó certificado
-    btnSalir?.addEventListener("click", () => {
-      if (sessionStorage.getItem("cert_descargado") !== "1") return;
-      try { sessionStorage.removeItem("elector"); } catch {}
-      window.location.replace("/");
-    });
+      // Pinta identidad (sin datos del voto)
+      const infoElector = document.getElementById("infoElector");
+      infoElector.textContent = `Elector: ${elector.nombres || ""} (ID: ${elector.id_elector || ""})`;
 
-    // Si recarga la página y ya descargó, mantener habilitado
-    (function initSalirState(){
+      // ===== UI =====
+      const btnCert   = document.getElementById("btnCert");
+      const btnSalir  = document.getElementById("btnSalir");
+      const alertCert = document.getElementById("alertCert");
+
+      // Descarga certificado → habilita "Salir" (azul)
+      btnCert?.addEventListener("click", async () => {
+        try {
+          // función exportada por frontend/js/certificado.js
+          await window.generarCertificado(elector);
+          sessionStorage.setItem("cert_descargado", "1");
+
+          alertCert.className = "alert alert-success py-2 px-3 mb-3";
+          alertCert.textContent = "Certificado descargado correctamente. Ya puedes salir.";
+
+          btnSalir.disabled = false;
+          btnSalir.classList.remove("btn-outline-secondary");
+          btnSalir.classList.add("btn-primary", "text-white");
+
+          // Evita descargas duplicadas
+          btnCert.disabled = true;
+        } catch (e) {
+          console.error(e);
+          alertCert.className = "alert alert-danger py-2 px-3 mb-3";
+          alertCert.textContent = "No se pudo generar el certificado. Intenta nuevamente.";
+        }
+      });
+
+      // Salir sólo si descargó certificado
+      btnSalir?.addEventListener("click", () => {
+        if (sessionStorage.getItem("cert_descargado") !== "1") return;
+        try { sessionStorage.removeItem("elector"); } catch {}
+        window.location.replace("/");
+      });
+
+      // Si recarga la página y ya descargó, mantener habilitado
       if (sessionStorage.getItem("cert_descargado") === "1") {
         btnSalir.disabled = false;
         btnSalir.classList.remove("btn-outline-secondary");
         btnSalir.classList.add("btn-primary", "text-white");
         alertCert.className = "alert alert-success py-2 px-3 mb-3";
         alertCert.textContent = "Certificado descargado correctamente. Ya puedes salir.";
+        btnCert.disabled = true;
       }
-    })();
+    });
   </script>
 </body>
 </html>

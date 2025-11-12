@@ -17,7 +17,7 @@ import electoresRouter from './routes/electores.js';
 import certificadoRouter from "./routes/certificado.js";
 import adminRouter from "./routes/admin.js";
 import estadoRouter from "./routes/estado.js";
-
+const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const API_URL = "https://sistemavotacionescamara.onrender.com/api";
 
@@ -34,8 +34,7 @@ app.use(cors({
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(process.cwd(), "frontend")));
-app.use("/admin", express.static(path.join(process.cwd(), "frontend/admin")));
+app.use("/api/admin", adminRouter);
 
 app.use(session({
   secret: process.env.SESSION_SECRET || "super-secret",
@@ -43,6 +42,22 @@ app.use(session({
   saveUninitialized: false,
   cookie: { sameSite: "lax" }
 }));
+
+
+// Rutas
+app.use("/api", authRoutes);
+app.use("/api", votoRoutes);
+app.use("/api", catalogosRoutes);
+app.use('/api', votoRouter);
+app.use('/api', electoresRouter);
+app.use("/api", certificadoRouter);
+app.use("/api/estado", estadoRouter);
+app.use("/admin/js",  express.static(path.join(__dirname, "../frontend/admin/js")));
+app.use("/admin/img", express.static(path.join(__dirname, "../frontend/admin/img")));
+app.use("/admin/admin.css", (req,res) =>
+  res.sendFile(path.join(__dirname, "../frontend/admin/admin.css"))
+);
+app.use("/api/admin", adminRouter);
 
 app.use(session({
   name: "sid",
@@ -57,16 +72,12 @@ app.use(session({
   },
 }));
 
+function ensureAdmin(req, res, next) {
+  if (req.session && req.session.admin) return next();
+  // si no hay sesión, redirige al login del admin
+  return res.redirect("/admin/login.html");
+}
 
-// Rutas
-app.use("/api", authRoutes);
-app.use("/api", votoRoutes);
-app.use("/api", catalogosRoutes);
-app.use('/api', votoRouter);
-app.use('/api', electoresRouter);
-app.use("/api", certificadoRouter);
-app.use("/api/estado", estadoRouter);
-app.use("/api/admin", adminRouter);
 
 // Salud
 app.get("/api/health", (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
@@ -107,4 +118,20 @@ app.get("/api/_diag", async (_req, res) => {
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
+});
+
+// --- Páginas del admin: login SIEMPRE público ---
+app.get("/admin/login.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/admin/login.html"));
+});
+
+// --- Páginas del admin: panel PROTEGIDO ---
+app.get("/admin/panel.html", ensureAdmin, (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/admin/panel.html"));
+});
+
+// (opcional) atajo: /admin -> según haya sesión
+app.get("/admin", (req, res) => {
+  if (req.session?.admin) return res.redirect("/admin/panel.html");
+  return res.redirect("/admin/login.html");
 });

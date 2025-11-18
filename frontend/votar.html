@@ -214,23 +214,31 @@ async function cargarPartidos(codCir){
   // limpiar caché de otra circ
   [...candidatosCache.keys()].forEach(k=>{ if(!k.startsWith(`${codCir}:`)) candidatosCache.delete(k); });
 
-  const res = await fetch(`${API_URL}/partidos?codigo_dane=${elector.codigo_dane}&cod_cir=${codCir}`);
+  // AHORA solo por circunscripción
+  const res = await fetch(`${API_URL}/partidos?cod_cir=${codCir}`);
   const data = await res.json();
   partidosData = Array.isArray(data) ? data : [];
   await renderPartidos();
 }
 
+
 // ==== Obtener candidatos ====
 async function getCandidatos(codCir, codPartido){
   const key = `${codCir}:${codPartido}`;
   if (candidatosCache.has(key)) return candidatosCache.get(key);
-  const res = await fetch(`${API_URL}/candidatos?codigo_dane=${elector.codigo_dane}&cod_cir=${codCir}&cod_partido=${codPartido}`);
-  if (res.status === 204) { candidatosCache.set(key, []); return []; }
+
+  // AHORA solo por circunscripción + partido
+  const res = await fetch(`${API_URL}/candidatos?cod_cir=${codCir}&cod_partido=${codPartido}`);
+  if (res.status === 204) {
+    candidatosCache.set(key, []);
+    return [];
+  }
   const rows = await res.json();
   const arr = Array.isArray(rows) ? rows : [];
   candidatosCache.set(key, arr);
   return arr;
 }
+
 
 // ==== Resumen selección ====
 function setSeleccion(obj){

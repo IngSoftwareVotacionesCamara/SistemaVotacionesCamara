@@ -71,16 +71,16 @@ async function cargarCircunscripciones(codigo_dane) {
   return res.json();
 }
 
-async function cargarPartidos(codigo_dane, cod_cir) {
-  const url = `${API_URL}/partidos?codigo_dane=${codigo_dane}&cod_cir=${cod_cir}`;
+async function cargarPartidos(cod_cir) {
+  const url = `${API_URL}/partidos?cod_cir=${cod_cir}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Error partidos (HTTP ${res.status})`);
   return res.json();
 }
 
-async function cargarCandidatos(codigo_dane, cod_cir, cod_partido) {
+async function cargarCandidatos(cod_cir, cod_partido) {
   const res = await fetch(
-    `${API_URL}/candidatos?codigo_dane=${codigo_dane}&cod_cir=${cod_cir}&cod_partido=${cod_partido}`
+    `${API_URL}/candidatos?cod_cir=${cod_cir}&cod_partido=${cod_partido}`
   );
   if (res.status === 204 && res.headers.get("X-Lista") === "cerrada") {
     return { tipo_lista: "cerrada", candidatos: [] };
@@ -128,7 +128,7 @@ if (window.location.pathname.includes("votar.html")) {
       sessionStorage.setItem("cod_cir", String(cod_cir));
 
       // 3) Cargar partidos
-      const partidos = await cargarPartidos(elector.codigo_dane, cod_cir);
+      const partidos = await cargarPartidos(cod_cir);
       if (!Array.isArray(partidos) || partidos.length === 0) {
         msg.textContent = "No hay partidos disponibles.";
         return;

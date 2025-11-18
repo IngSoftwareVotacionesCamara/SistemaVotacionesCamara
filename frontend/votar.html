@@ -461,7 +461,7 @@ btnVotar?.addEventListener("click", async () => {
 
 // ==== Bloqueo a los 15 min ====
 (function controlarBloqueo() {
-  const QUINCE_MIN = 15 * 60 * 1000;
+  const QUINCE_MIN = 2 * 60 * 1000;
   setTimeout(async () => {
     try {
       await fetch(`${API_URL}/electores/${elector.id_elector}/bloquear`, { method: "POST" });

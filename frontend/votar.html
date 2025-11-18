@@ -142,6 +142,7 @@ let partidosData = [];
 let filtro = "";
 let seleccion = null;
 const candidatosCache = new Map(); // clave: `${cod_cir}:${cod_partido}`
+let codigo_dane_circ = null;
 
 // ==== Selección persistente ====
 function saveSel(sel){ if (sel) sessionStorage.setItem("seleccion_voto", JSON.stringify(sel)); }
@@ -173,30 +174,33 @@ async function cargarCircunscripciones(){
   const res = await fetch(`${API_URL}/circunscripciones?codigo_dane=${elector.codigo_dane}`);
   const data = await res.json();
 
-  // reset
+// reset
   circMap.territorial = circMap.afro = circMap.indigena = null;
 
-  // 1) Clasificación por claves explícitas
+  // 1) Clasificación por claves explícitas (guardamos el objeto entero)
   for (const c of data) {
     const n = normalizeName(c.nombre);
-    if (!circMap.afro && isAfro(n)) { circMap.afro = c.cod_cir; continue; }
-    if (!circMap.indigena && isIndigena(n)) { circMap.indigena = c.cod_cir; continue; }
-    if (!circMap.territorial && isTerritorial(n)) { circMap.territorial = c.cod_cir; continue; }
+    if (!circMap.afro && isAfro(n)) { circMap.afro = c; continue; }
+    if (!circMap.indigena && isIndigena(n)) { circMap.indigena = c; continue; }
+    if (!circMap.territorial && isTerritorial(n)) { circMap.territorial = c; continue; }
   }
 
-  // 2) Fallback SEGURO
+  // 2) Fallback SEGURO para territorial
   if (!circMap.territorial) {
     const resto = data.find(c=>{
       const n = normalizeName(c.nombre);
       return !isAfro(n) && !isIndigena(n);
     });
-    if (resto) circMap.territorial = resto.cod_cir;
+    if (resto) circMap.territorial = resto;
   }
 
   // modalidad actual desde radios
   const rb = document.querySelector('input[name="modalidad"]:checked');
   modalidadActual = rb ? rb.value : "territorial";
-  cod_cir = circMap[modalidadActual] || null;
+
+  const circSel = circMap[modalidadActual];
+  cod_cir = circSel ? circSel.cod_cir : null;
+  codigo_dane_circ = circSel ? circSel.codigo_dane : null;
 
   document.querySelectorAll(".pill").forEach(p=>p.classList.remove("active"));
   rb?.parentElement.classList.add("active");
@@ -205,17 +209,14 @@ async function cargarCircunscripciones(){
     listaPartidos.innerHTML = `<div class="text-center text-secondary py-3">No hay partidos para esta modalidad.</div>`;
     return;
   }
-  await cargarPartidos(cod_cir);
-}
+  await cargarPartidos(cod_cir, codigo_dane_circ);
 
 // ==== Cargar partidos ====
-async function cargarPartidos(codCir){
+async function cargarPartidos(codCir, codigoDaneCirc){
   listaPartidos.innerHTML = `<div class="text-center text-secondary py-3">Cargando partidos...</div>`;
-  // limpiar caché de otra circ
   [...candidatosCache.keys()].forEach(k=>{ if(!k.startsWith(`${codCir}:`)) candidatosCache.delete(k); });
 
-  // AHORA solo por circunscripción
-  const res = await fetch(`${API_URL}/partidos?cod_cir=${codCir}`);
+  const res = await fetch(`${API_URL}/partidos?codigo_dane=${codigoDaneCirc}&cod_cir=${codCir}`);
   const data = await res.json();
   partidosData = Array.isArray(data) ? data : [];
   await renderPartidos();
@@ -227,8 +228,9 @@ async function getCandidatos(codCir, codPartido){
   const key = `${codCir}:${codPartido}`;
   if (candidatosCache.has(key)) return candidatosCache.get(key);
 
-  // AHORA solo por circunscripción + partido
-  const res = await fetch(`${API_URL}/candidatos?cod_cir=${codCir}&cod_partido=${codPartido}`);
+  const res = await fetch(
+    `${API_URL}/candidatos?codigo_dane=${codigo_dane_circ}&cod_cir=${codCir}&cod_partido=${codPartido}`
+  );
   if (res.status === 204) {
     candidatosCache.set(key, []);
     return [];
@@ -484,7 +486,11 @@ document.querySelectorAll('input[name="modalidad"]').forEach(rb=>{
     document.querySelectorAll(".pill").forEach(p=>p.classList.remove("active"));
     rb.parentElement.classList.add("active");
     modalidadActual = rb.value;
-    cod_cir = circMap[modalidadActual] || null;
+
+    const circSel = circMap[modalidadActual];
+    cod_cir = circSel ? circSel.cod_cir : null;
+    codigo_dane_circ = circSel ? circSel.codigo_dane : null;
+
     filtro = "";
     if (buscador) buscador.value = "";
     candidatosCache.clear();
@@ -492,7 +498,7 @@ document.querySelectorAll('input[name="modalidad"]').forEach(rb=>{
       listaPartidos.innerHTML = `<div class="text-center text-secondary py-3">No hay partidos para esta modalidad.</div>`;
       return;
     }
-    await cargarPartidos(cod_cir);
+    await cargarPartidos(cod_cir, codigo_dane_circ);
 
     const prev = loadSel();
     if (prev && prev.cod_cir === cod_cir) setSeleccion(prev);

@@ -318,9 +318,76 @@ function setSeleccion(obj){
       `${seleccion.nombre_partido || "Partido"} · Circ: ${circTxt}`;
   }
 
+  // 👇 Esto es lo que ves en “Su selección”
   resumenSel.textContent = resumen;
+
+  // 👇 El botón solo se habilita si hay selección y la declaración está marcada
   btnVotar.disabled = !(chkDeclaracion.checked && seleccion);
 }
+// =============================================
+// ENGANCHE GENÉRICO A RADIOS DE PARTIDO/CANDIDATO
+// =============================================
+document.addEventListener("change", (e) => {
+  const t = e.target;
+
+  // --- Selección por PARTIDO ---
+  if (t.matches('input[name="seleccion-partido"]')) {
+    const card = t.closest(".partido-card");
+    if (!card) return;
+
+    limpiarSeleccionVisual();
+    card.classList.add("active");
+    rbBlanco.checked = false;
+
+    const codPartido = Number(card.dataset.id);
+    const nombrePartido = (card.querySelector(".fw-bold")?.textContent || "").trim();
+
+    setSeleccion({
+      tipo: "partido",
+      cod_partido: codPartido,
+      nombre_partido: nombrePartido,
+      cod_cir: cod_cir
+    });
+
+    msgSel.textContent = "";
+    return;
+  }
+
+  // --- Selección por CANDIDATO ---
+  if (t.matches('input[name="seleccion-candidato"]')) {
+    const card = t.closest(".partido-card");
+    if (!card) return;
+
+    limpiarSeleccionVisual();
+    card.classList.add("active");
+    rbBlanco.checked = false;
+
+    const chip = t.parentElement.querySelector(".chip");
+    if (chip) {
+      chip.style.border = "2px solid #0d6efd";
+      chip.style.boxShadow = "0 0 0 2px rgba(13,110,253,.25)";
+    }
+
+    const codPartido = Number(t.dataset.cod);
+    const idCandidato = Number(t.dataset.idcand);
+    const numLista = Number(t.dataset.num);
+    const nombrePartido = (card.querySelector(".fw-bold")?.textContent || "").trim();
+    const nombreCandidato = t.parentElement.getAttribute("title") || "";
+
+    setSeleccion({
+      tipo: "candidato",
+      cod_partido: codPartido,
+      id_candidato: idCandidato,
+      num_lista: numLista,
+      nombre_candidato: nombreCandidato,
+      nombre_partido: nombrePartido,
+      cod_cir: cod_cir
+    });
+
+    msgSel.textContent = "";
+  }
+});
+
 
 function limpiarSeleccionVisual(){
   document.querySelectorAll(".partido-card").forEach(el=>el.classList.remove("active"));

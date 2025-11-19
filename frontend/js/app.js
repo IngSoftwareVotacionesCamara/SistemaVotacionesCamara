@@ -104,7 +104,7 @@ async function cargarCandidatos(cod_cir, cod_partido) {
 
 /* -------------------------
    VOTAR
--------------------------- */
+--------------------------
 if (window.location.pathname.includes("votar.html")) {
   (async () => {
     // 1) Recuperar sesión
@@ -213,3 +213,4 @@ if (window.location.pathname.includes("votar.html")) {
     });
   })();
 }
+*/

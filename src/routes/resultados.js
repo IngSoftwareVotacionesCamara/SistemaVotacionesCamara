@@ -95,12 +95,18 @@ router.get("/partidos", async (_req, res) => {
 router.get("/candidatos", async (_req, res) => {
   try {
     const result = await pool.query(`
-      SELECT
-        nombre_candidato,
-        nombre_partido,
-        nombre_circunscripcion
-      FROM votaciones.vista_candidatos_detalle
-      ORDER BY nombre_partido, nombre_candidato;
+      SELECT c.id_elector,
+          e.nombres AS nombre_candidato,
+          p.nombrep AS nombre_partido,
+          c.num_lista,
+          ci.nombrec AS nombre_circunscripcion
+         FROM votaciones.candidatos c
+         NATURAL JOIN votaciones.adscribe a
+         JOIN votaciones.electores e ON (e.id_elector=c.id_elector)
+         JOIN votaciones.circunscripciones ci USING (cod_cir)
+         JOIN votaciones.partidos p USING (cod_partido)
+         WHERE c.elegido='SI'
+      ORDER BY ci.cod_cir;
     `);
     res.json(result.rows);
   } catch (error) {

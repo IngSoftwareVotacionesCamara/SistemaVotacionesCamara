@@ -291,7 +291,7 @@ btnExportar.addEventListener("click", async () => {
 // 🏛️ Conformación Cámara (CU16)
 async function cargarConformacion() {
   try {
-    const res = await fetch(`${API}/resultados/candidatos`);
+    const res = await fetch(`${API}/candidatos`);
     const data = await res.json();
 
     const filtroPartido = document.getElementById("filtroPartidoConformacion");

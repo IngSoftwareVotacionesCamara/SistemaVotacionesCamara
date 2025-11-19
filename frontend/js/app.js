@@ -61,6 +61,18 @@ if (formLogin) {
     }
   });
 }
+async function cargarResumen() {
+  try {
+    const res = await fetch(`${API_URL}/resumen`);
+    const data = await res.json();
+
+    document.getElementById("totalElectores").textContent = data.total_electores;
+    document.getElementById("totalVotos").textContent = data.total_votos;
+    document.getElementById("porcentajeParticipacion").textContent = data.porcentaje_participacion + " %";
+  } catch (error) {
+    console.error("Error al cargar resumen:", error);
+  }
+}
 
 /* -------------------------
    CATÁLOGOS DE DATOS

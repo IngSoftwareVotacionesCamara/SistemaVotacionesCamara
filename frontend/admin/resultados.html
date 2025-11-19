@@ -61,6 +61,28 @@
     <!-- ===========================
          CASO DE USO 16 - CONFORMACIÓN CÁMARA
     =========================== -->
+
+    <div id="resumenContainer" class="p-4 mb-4 rounded shadow-sm bg-white">
+        <h3 class="mb-3 text-primary">📊 Resumen de participación electoral</h3>
+
+        <div class="row text-center">
+            <div class="col">
+                <h5>Total de electores</h5>
+                <p id="totalElectores" class="fw-bold fs-4">0</p>
+            </div>
+
+            <div class="col">
+                <h5>Total de votos</h5>
+                <p id="totalVotos" class="fw-bold fs-4">0</p>
+            </div>
+
+            <div class="col">
+                <h5>Participación (%)</h5>
+                <p id="porcentajeParticipacion" class="fw-bold fs-4">0%</p>
+            </div>
+        </div>
+    </div>
+
     <div id="seccionConformacion" class="hidden">
         <h4 class="mt-4">🏛️ Conformación de la Cámara</h4>
 
@@ -198,6 +220,8 @@
 const API = "/api/resultados";
 let chartConformacion, chartTerritoriales, chartEspeciales;
 
+cargarResumen();
+
 // Navegación
 function mostrarSeccion(nombre) {
   document.querySelectorAll("div[id^='seccion']").forEach(div => div.classList.add("hidden"));
@@ -267,7 +291,7 @@ btnExportar.addEventListener("click", async () => {
 // 🏛️ Conformación Cámara (CU16)
 async function cargarConformacion() {
   try {
-    const res = await fetch(`${API}/candidatos`);
+    const res = await fetch(`${API}/resultados/candidatos`);
     const data = await res.json();
 
     const filtroPartido = document.getElementById("filtroPartidoConformacion");
@@ -457,6 +481,25 @@ async function cargarEspeciales() {
     console.error("Error al cargar resultados especiales:", error);
   }
 }
+// =======================
+// RESUMEN DE PARTICIPACIÓN
+// =======================
+async function cargarResumen() {
+  try {
+    const res = await fetch(`${API}/resultados/resumen`);
+    const data = await res.json();
+
+    console.log("Resumen recibido:", data); // 🔍 Debug
+
+    document.getElementById("totalElectores").textContent = data.total_electores;
+    document.getElementById("totalVotos").textContent = data.total_votos;
+    document.getElementById("porcentajeParticipacion").textContent =
+      data.porcentaje_participacion + "%";
+  } catch (error) {
+    console.error("Error al cargar resumen:", error);
+  }
+}
+
 </script>
 </body>
 </html>

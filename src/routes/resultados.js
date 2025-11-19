@@ -163,4 +163,29 @@ router.get("/resultados/especiales", async (_req, res) => {
   }
 });
 
+// ===============================
+// 7️⃣ Resumen de Participación
+// ===============================
+router.get("/resultados/resumen", async (_req, res) => {
+  try {
+    const data = await pool.query(`
+      SELECT
+        (SELECT COUNT(*) FROM votaciones.electores) AS total_electores,
+        (SELECT COUNT(*) FROM votaciones.vota) AS total_votos,
+        CASE
+          WHEN (SELECT COUNT(*) FROM votaciones.electores) = 0 THEN 0
+          ELSE ROUND(
+            ((SELECT COUNT(*) FROM votaciones.vota)::decimal /
+             (SELECT COUNT(*) FROM votaciones.electores)::decimal) * 100, 2
+          )
+        END AS porcentaje_participacion;
+    `);
+
+    res.json(data.rows[0]);
+  } catch (error) {
+    console.error("Error resumen:", error.message);
+    res.status(500).json({ error: "Error obteniendo el resumen" });
+  }
+});
+
 export default router;

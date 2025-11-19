@@ -4,7 +4,6 @@ import session from "express-session";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
-
 import { pool } from "./db.js";
 import authRoutes from "./routes/auth.js";
 import votoRoutes from "./routes/voto.js";
